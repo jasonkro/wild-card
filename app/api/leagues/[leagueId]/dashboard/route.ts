@@ -33,6 +33,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
   const { leagueId } = await params;
   if (!/^\d{6,}$/.test(leagueId)) return NextResponse.json({ error: 'Invalid league ID.' }, { status: 400 });
 
+  const isCurrentWeekRequest = !new URL(request.url).searchParams.has('week');
+
   try {
     const base = 'https://api.sleeper.app/v1';
     const [leagueResponse, usersResponse, rostersResponse, stateResponse, playersResponse] = await Promise.all([
@@ -44,6 +46,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     ]);
 
     if (!leagueResponse.ok || !usersResponse.ok || !rostersResponse.ok || !stateResponse.ok || !playersResponse.ok) {
+      if (isCurrentWeekRequest) {
+        const refresh = await claimLeagueRefresh(leagueId);
+        if (refresh.latestData && typeof refresh.latestData === 'object') {
+          return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, sleepUnavailable: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+        }
+      }
       return NextResponse.json({ error: 'Sleeper data is unavailable right now.' }, { status: 502 });
     }
 
@@ -53,12 +61,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const state = await stateResponse.json() as SleeperState;
     const players = await playersResponse.json() as Record<string, SleeperPlayer>;
     const requestedWeek = Number(new URL(request.url).searchParams.get('week'));
-    const isCurrentWeekRequest = !new URL(request.url).searchParams.has('week');
     const week = Number.isInteger(requestedWeek) && requestedWeek >= 1 && requestedWeek <= 18 ? requestedWeek : state.week || state.display_week || 1;
     if (isCurrentWeekRequest) {
       const refresh = await claimLeagueRefresh(leagueId);
       if (!refresh.allowed) {
-        if (refresh.latestData && typeof refresh.latestData === 'object') return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, rateLimited: true, retryAfter: refresh.retryAfter });
+        if (refresh.latestData && typeof refresh.latestData === 'object') return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, rateLimited: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
         return NextResponse.json({ error: 'This league was refreshed less than a minute ago.', retryAfter: refresh.retryAfter }, { status: 429, headers: { 'Retry-After': String(refresh.retryAfter), 'Cache-Control': 'no-store' } });
       }
     }
