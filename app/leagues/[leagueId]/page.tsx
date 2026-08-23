@@ -17,7 +17,11 @@ export default function LeaguePage() {
 
   async function loadDashboard() {
     const response = await fetch(`/api/leagues/${leagueId}/dashboard`, { cache: 'no-store' });
-    if (!response.ok) return;
+    if (!response.ok) {
+      setLoading(false);
+      return;
+    }
+
     const data = await response.json() as Dashboard;
     setDashboard(data);
     if (data.refreshedAt) {
