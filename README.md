@@ -1,4 +1,4 @@
-# Wild Card
+# League of Chaos
 
 Sleeper fantasy football companion with global weekly modifiers.
 

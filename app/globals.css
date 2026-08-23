@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 * { box-sizing: border-box; }
-:root { --ink: #172321; --paper: #f2f0e9; --muted: #65716d; --line: #c9cec6; --lime: #d4ef52; --coral: #ff745b; --blue: #8fc9e8; --dark: #172321; }
+:root { --ink: #172321; --paper: #f2f0e9; --muted: #4d5b55; --line: #c9cec6; --lime: #d4ef52; --coral: #ff745b; --blue: #8fc9e8; --dark: #172321; }
 html, body { margin: 0; min-height: 100%; background: var(--paper); color: var(--ink); }
 body { font-family: "Space Grotesk", sans-serif; overflow-x: hidden; }
 .warm { --paper: #f7eee1; --ink: #29201e; --line: #d9c8b7; }

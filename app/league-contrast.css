@@ -1,0 +1,44 @@
+.league-modifiers .next-modifier {
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  background: #e9e7df;
+  border-left: 2px solid var(--coral);
+  color: var(--ink);
+}
+
+.league-modifiers .next-modifier strong,
+.league-modifiers .next-modifier b {
+  color: var(--ink);
+}
+
+.league-modifiers .next-modifier strong {
+  font: 600 12px "DM Mono", monospace;
+  letter-spacing: .04em;
+  margin-right: 10px;
+}
+
+.league-modifiers .next-modifier b {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.matchup-modifiers {
+  margin-bottom: 28px;
+}
+
+@media (max-width: 760px) {
+  .league-modifiers .next-modifier {
+    grid-template-columns: 1fr auto;
+  }
+
+  .league-modifiers .next-modifier strong {
+    grid-column: 2;
+    grid-row: 1;
+    margin-right: 0;
+  }
+
+  .league-modifiers .next-modifier b {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}

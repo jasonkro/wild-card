@@ -25,17 +25,17 @@ export default function GuidePage() {
 
       <header className="guide-header">
         <div>
-          <span className="eyebrow">THE WILD CARD PLAYBOOK</span>
+          <span className="eyebrow">THE LEAGUE OF CHAOS PLAYBOOK</span>
           <h1>How the league works.</h1>
         </div>
-        <p className="guide-lede">Sleeper runs the league. Wild Card adds the weekly layer, then checks the math when the games are done.</p>
+          <p className="guide-lede">Sleeper runs the league. League of Chaos adds the weekly layer, then checks the math when the games are done.</p>
       </header>
 
       <section className="guide-principle">
         <span className="eyebrow">ONE SOURCE OF TRUTH</span>
         <div>
           <h2>Sleeper is official.</h2>
-          <p>Roster changes, matchups, player stats, and final team scores all come from Sleeper. Wild Card calculates the weekly modifiers and gives the commissioner a clear audit trail. It never replaces the official league record.</p>
+          <p>Roster changes, matchups, player stats, and final team scores all come from Sleeper. League of Chaos calculates the weekly modifiers and gives the commissioner a clear audit trail. It never replaces the official league record.</p>
         </div>
       </section>
 
@@ -82,7 +82,7 @@ export default function GuidePage() {
       </section>
 
       <footer className="guide-footer">
-        <span>WILD CARD / LEAGUE PLAYBOOK</span>
+        <span>LEAGUE OF CHAOS / PLAYBOOK</span>
         <Link href="/">Connect a league →</Link>
       </footer>
     </main>

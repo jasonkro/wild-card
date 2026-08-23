@@ -80,7 +80,7 @@ export default function Home() {
   return (
     <main className="home-page">
       <header className="topbar">
-        <div className="wordmark">WILD CARD</div>
+        <div className="wordmark">LEAGUE OF CHAOS</div>
         <div className="season-chip">CURRENT RULES / WEEK 01</div>
         <div className="topbar-right">
           <Link className="guide-nav-link" href="/guide">How it works</Link>
@@ -89,7 +89,7 @@ export default function Home() {
 
       <section className="intro-section">
         <div className="kicker">SLEEPER LEAGUE COMPANION</div>
-        <h1>Play the board, not the spreadsheet.</h1>
+        <h1>Your league has chosen Chaos.</h1>
         <p className="intro-copy">Add your league ID and keep your saved connections here. If you only have one, it jumps straight to that league dashboard.</p>
 
         <form className="connect-form" onSubmit={connectLeague}>
@@ -122,10 +122,9 @@ export default function Home() {
 
         <div className="next-modifier-list">
           {currentModifiers.map((modifier) => (
-            <div className="next-modifier" key={`${modifier.label}-${modifier.target ?? 'stat'}`}>
+            <div className="next-modifier" style={{ background: '#e9e7df', borderLeftColor: 'var(--coral)', color: 'var(--ink)' }} key={`${modifier.label}-${modifier.target ?? 'stat'}`}>
               <span>{modifier.label}</span>
-              <strong>{modifier.kind === 'stat' ? 'STAT' : modifier.target}</strong>
-              <b>{modifier.sign > 0 ? '+' : '−'}{modifier.percent}%</b>
+              <b style={{ color: 'var(--ink)' }}>{modifier.sign > 0 ? '+' : '−'}{modifier.percent}% {modifier.kind === 'position' ? modifier.target : 'STAT'}</b>
             </div>
           ))}
         </div>
