@@ -138,7 +138,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const dashboard = { league: { id: leagueId, name: league.name || 'Unnamed league', season: league.season || state.season || 'Unknown' }, week, refreshedAt: new Date().toISOString(), refreshIntervalSeconds: 60, modifiers, teams };
     if (isCurrentWeekRequest) await saveLeagueRefreshData(leagueId, dashboard);
     return NextResponse.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
-    return NextResponse.json({ error: 'Could not reach Sleeper.' }, { status: 502 });
+  } catch (error) {
+    if (isCurrentWeekRequest) {
+      const refresh = await claimLeagueRefresh(leagueId);
+      if (refresh.latestData && typeof refresh.latestData === 'object') {
+        return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, sleepUnavailable: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+      }
+    }
+    return NextResponse.json({ error: 'Could not reach Sleeper. Please try again in a moment.' }, { status: 502 });
   }
 }
