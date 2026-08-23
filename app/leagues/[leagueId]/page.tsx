@@ -12,23 +12,34 @@ export default function LeaguePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(0);
 
   async function loadDashboard() {
-    const response = await fetch(`/api/leagues/${leagueId}/dashboard`, { cache: 'no-store' });
-    if (!response.ok) {
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
+    setError(null);
 
-    const data = await response.json() as Dashboard;
-    setDashboard(data);
-    if (data.refreshedAt) {
-      setLastUpdated(data.refreshedAt);
-      setSecondsUntilRefresh(Math.max(0, 60 - Math.floor((Date.now() - Date.parse(data.refreshedAt)) / 1000)));
+    try {
+      const response = await fetch(`/api/leagues/${leagueId}/dashboard`, { cache: 'no-store' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string; retryAfter?: number } | null;
+        setError(payload?.error || `League data is unavailable right now (${response.status}).`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json() as Dashboard;
+      setDashboard(data);
+      if (data.refreshedAt) {
+        setLastUpdated(data.refreshedAt);
+        setSecondsUntilRefresh(Math.max(0, 60 - Math.floor((Date.now() - Date.parse(data.refreshedAt)) / 1000)));
+      }
+      setLoading(false);
+    } catch {
+      setError('Could not load this league dashboard. Please try again.');
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
