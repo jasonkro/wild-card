@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model WeeklyModifierSet {
+  id          String   @id @default(cuid())
+  season      Int
+  week        Int
+  modifiers   Json
+  lockedAt    DateTime
+  revealAt    DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([season, week])
+}
+
+model LeagueRefresh {
+  leagueId       String   @id
+  lastFetchedAt  DateTime
+  latestData     Json?
+}
