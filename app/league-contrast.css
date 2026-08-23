@@ -26,6 +26,31 @@
   margin-bottom: 28px;
 }
 
+.guide-possible-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.guide-possible-card {
+  padding: 18px;
+  background: #e9e7df;
+  border: 1px solid var(--line);
+}
+
+.guide-possible-card h3 {
+  margin: 24px 0 10px;
+  font: 600 15px/1.35 "DM Mono", monospace;
+}
+
+.guide-possible-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 760px) {
   .league-modifiers .next-modifier {
     grid-template-columns: 1fr auto;

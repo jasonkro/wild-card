@@ -15,6 +15,12 @@ const commissionerTasks = [
   ['Resolve exceptions', 'Investigate any mismatch in the matchup detail view, then correct the official Sleeper score before treating the week as final.'],
 ];
 
+const possibleModifiers = [
+  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A percentage boost or penalty applies to every eligible player in that lineup position.'],
+  ['STAT EVENT', 'PASS TD · RUSH TD · REC TD', 'A percentage adjustment applies when a player records one of the selected touchdown events.'],
+  ['NEGATIVE EVENT', 'INTERCEPTION · FUMBLE LOST', 'A percentage adjustment can be tied to mistakes recorded in the official Sleeper stats.'],
+];
+
 export default function GuidePage() {
   return (
     <main className="guide-page">
@@ -36,6 +42,22 @@ export default function GuidePage() {
         <div>
           <h2>Sleeper is official.</h2>
           <p>Roster changes, matchups, player stats, and final team scores all come from Sleeper. League of Chaos calculates the weekly modifiers and gives the commissioner a clear audit trail. It never replaces the official league record.</p>
+        </div>
+      </section>
+
+      <section className="guide-section">
+        <div className="guide-section-heading">
+          <span className="eyebrow">THE CHAOS MENU</span>
+          <h2>Possible modifiers</h2>
+        </div>
+        <div className="guide-possible-grid">
+          {possibleModifiers.map(([type, targets, description]) => (
+            <article className="guide-possible-card" key={type}>
+              <span className="guide-number">{type}</span>
+              <h3>{targets}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
         </div>
       </section>
 
