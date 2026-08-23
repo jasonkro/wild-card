@@ -25,8 +25,9 @@ function modifierDescription(modifiers: WeeklyModifier[], slot: string | undefin
   const positionModifier = modifiers.find((item) => item.kind === 'position' && item.target === slot);
   const statDescriptions = modifiers.filter((item) => item.kind === 'stat' && item.stats).map((modifier) => {
     const events = modifier.stats?.reduce((count, stat) => count + (stats?.[stat] || 0), 0) || 0;
+    if (events === 0) return null;
     return `${modifier.sign > 0 ? '+' : '−'}${modifier.percent}% x${events} ${modifier.label}`;
-  });
+  }).filter(Boolean);
   return [positionModifier && `${positionModifier.sign > 0 ? '+' : '−'}${positionModifier.percent}% ${slot}`, ...statDescriptions].filter(Boolean).join(' / ') || '—';
 }
 
