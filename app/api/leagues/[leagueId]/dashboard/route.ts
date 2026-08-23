@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { WeeklyModifier } from '@/lib/modifiers';
 import { getStoredModifiers } from '@/lib/modifier-store';
 import { claimLeagueRefresh, saveLeagueRefreshData } from '@/lib/league-refresh';
+import { prisma } from '@/lib/prisma';
 
 type SleeperUser = { user_id: string; display_name?: string; metadata?: { team_name?: string } };
 type SleeperRoster = { roster_id: number; owner_id?: string; matchup_id?: number; points?: number; starters?: string[] };
@@ -139,10 +140,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     if (isCurrentWeekRequest) await saveLeagueRefreshData(leagueId, dashboard);
     return NextResponse.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    if (isCurrentWeekRequest) {
-      const refresh = await claimLeagueRefresh(leagueId);
-      if (refresh.latestData && typeof refresh.latestData === 'object') {
-        return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, sleepUnavailable: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+    if (process.env.DATABASE_URL) {
+      try {
+        const cached = await prisma.leagueRefresh.findUnique({ where: { leagueId } });
+        if (cached?.latestData && typeof cached.latestData === 'object') {
+          return NextResponse.json({ ...cached.latestData as Record<string, unknown>, sleepUnavailable: true }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+        }
+      } catch {
+        // If cache lookup fails, continue to error response
       }
     }
     return NextResponse.json({ error: 'Could not reach Sleeper. Please try again in a moment.' }, { status: 502 });
