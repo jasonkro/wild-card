@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { getModifierSchedule, getWeeklyModifiers, WeeklyModifier } from '@/lib/modifiers';
 
 const storageKey = 'wild-card-leagues';
+const redirectKey = 'wild-card-redirected';
 
 export default function Home() {
   const router = useRouter();
@@ -22,7 +23,11 @@ export default function Home() {
       const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as string[];
       const unique = [...new Set(stored.filter(Boolean))];
       setSavedLeagues(unique);
-      if (unique.length === 1) {
+
+      // Only redirect on first visit, not on back navigation
+      const hasRedirected = sessionStorage.getItem(redirectKey);
+      if (unique.length === 1 && !hasRedirected) {
+        sessionStorage.setItem(redirectKey, 'true');
         router.replace(`/leagues/${unique[0]}`);
       }
     } catch {
