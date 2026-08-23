@@ -65,8 +65,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     if (isCurrentWeekRequest) {
       const refresh = await claimLeagueRefresh(leagueId);
       if (!refresh.allowed) {
-        if (refresh.latestData && typeof refresh.latestData === 'object') return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, rateLimited: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
-        return NextResponse.json({ error: 'This league was refreshed less than a minute ago.', retryAfter: refresh.retryAfter }, { status: 429, headers: { 'Retry-After': String(refresh.retryAfter), 'Cache-Control': 'no-store' } });
+        if (refresh.latestData && typeof refresh.latestData === 'object') return NextResponse.json(refresh.latestData as Record<string, unknown>, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+        return NextResponse.json({}, { status: 304, headers: { 'Cache-Control': 'no-store' } });
       }
     }
     const modifiers = await getStoredModifiers(week);
