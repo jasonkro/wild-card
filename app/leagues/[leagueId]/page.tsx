@@ -15,8 +15,14 @@ export default function LeaguePage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
 
-  async function loadDashboard() {
+  async function loadDashboard(isRetry = false) {
+    if (isRetry) {
+      setRetryCount((prev) => prev + 1);
+    } else {
+      setRetryCount(0);
+    }
     setLoading(true);
     setError(null);
 
@@ -24,8 +30,18 @@ export default function LeaguePage() {
       const response = await fetch(`/api/leagues/${leagueId}/dashboard`, { cache: 'no-store' });
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { error?: string; retryAfter?: number } | null;
-        setError(payload?.error || `League data is unavailable right now (${response.status}).`);
+        const errorMsg = payload?.error || `League data is unavailable right now (${response.status}).`;
+        setError(errorMsg);
         setLoading(false);
+
+        // Auto-retry with exponential backoff for server errors
+        if (response.status >= 500 || response.status === 429) {
+          const delayMs = Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
+          const timer = setTimeout(() => {
+            loadDashboard(true);
+          }, delayMs);
+          return () => clearTimeout(timer);
+        }
         return;
       }
 
@@ -36,9 +52,17 @@ export default function LeaguePage() {
         setSecondsUntilRefresh(Math.max(0, 60 - Math.floor((Date.now() - Date.parse(data.refreshedAt)) / 1000)));
       }
       setLoading(false);
+      setRetryCount(0); // Reset retry count on success
     } catch {
       setError('Could not load this league dashboard. Please try again.');
       setLoading(false);
+
+      // Auto-retry network errors
+      const delayMs = Math.min(1000 * Math.pow(2, retryCount), 30000);
+      const timer = setTimeout(() => {
+        loadDashboard(true);
+      }, delayMs);
+      return () => clearTimeout(timer);
     }
   }
 

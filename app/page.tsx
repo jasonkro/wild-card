@@ -22,10 +22,13 @@ export default function Home() {
       const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as string[];
       const unique = [...new Set(stored.filter(Boolean))];
       setSavedLeagues(unique);
+      if (unique.length === 1) {
+        router.replace(`/leagues/${unique[0]}`);
+      }
     } catch {
       setSavedLeagues([]);
     }
-  }, []);
+  }, [router]);
 
   async function connectLeague(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
