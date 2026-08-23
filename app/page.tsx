@@ -82,6 +82,9 @@ export default function Home() {
       <header className="topbar">
         <div className="wordmark">WILD CARD</div>
         <div className="season-chip">CURRENT RULES / WEEK 01</div>
+        <div className="topbar-right">
+          <Link className="guide-nav-link" href="/guide">How it works</Link>
+        </div>
       </header>
 
       <section className="intro-section">
