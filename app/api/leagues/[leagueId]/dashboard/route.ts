@@ -10,6 +10,7 @@ type SleeperMatchup = { roster_id: number; matchup_id: number; points?: number; 
 type SleeperState = { week?: number; display_week?: number; season?: string };
 type SleeperPlayer = { full_name?: string; first_name?: string; last_name?: string; position?: string };
 type SleeperProjection = { pts_ppr?: number; pts_half_ppr?: number; pts_std?: number };
+type SleeperFreeAgent = { player_id?: string; projected_stats?: SleeperProjection };
 type SleeperStats = { pass_td?: number; rush_td?: number; rec_td?: number; return_td?: number; int?: number; fum_lost?: number };
 function modifierFactor(modifiers: WeeklyModifier[], slot: string | undefined, stats: SleeperStats | undefined) {
   const positionModifier = modifiers.find((item) => item.kind === 'position' && item.target === slot);
@@ -72,8 +73,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
       }
     }
     const modifiers = await getStoredModifiers(week);
-    const projectionResponse = await fetch(`${base}/projections/nfl/${league.season || state.season || '2026'}/${week}`, { next: { revalidate: 300 } });
+    const projectionResponse = await fetch(`${base}/projections/nfl/regular/${league.season || state.season || '2026'}/${week}`, { next: { revalidate: 300 } });
     const projections = projectionResponse.ok ? await projectionResponse.json() as Record<string, SleeperProjection> : {};
+    const freeAgentsResponse = await fetch(`${base}/league/${leagueId}/free_agents/nfl?week=${week}`, { next: { revalidate: 300 } });
+    const freeAgents = freeAgentsResponse.ok ? await freeAgentsResponse.json() as SleeperFreeAgent[] : [];
+    const projectionsByPlayer = { ...projections };
+    freeAgents.forEach((player) => {
+      if (player.player_id && player.projected_stats && Object.keys(player.projected_stats).length > 0) {
+        projectionsByPlayer[player.player_id] = player.projected_stats;
+      }
+    });
     const statsResponse = await fetch(`${base}/stats/nfl/${league.season || state.season || '2026'}/${week}`, { next: { revalidate: 60 } });
     const stats = statsResponse.ok ? await statsResponse.json() as Record<string, SleeperStats> : {};
     const matchupsResponse = await fetch(`${base}/league/${leagueId}/matchups/${week}`, { next: { revalidate: 30 } });
@@ -85,13 +94,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
       const owner = roster?.owner_id ? usersById.get(roster.owner_id) : undefined;
       const projectedValues = (matchup.starters || []).map((playerId, index) => {
         if (playerId === '0') return null;
-        const projection = projections[playerId];
+        const projection = projectionsByPlayer[playerId];
         const projectedPoints = projection?.pts_ppr ?? projection?.pts_half_ppr ?? projection?.pts_std;
         if (typeof projectedPoints !== 'number') return null;
         const slot = league.roster_positions?.[index] || 'FLEX';
         return projectedPoints * (1 + modifierFactor(modifiers, slot, stats[playerId]));
       });
       const projectedTotal = projectedValues.some((points) => points !== null) ? projectedValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
+      const projectedBaseValues = (matchup.starters || []).map((playerId) => {
+        if (playerId === '0') return null;
+        const projection = projectionsByPlayer[playerId];
+        return projection?.pts_ppr ?? projection?.pts_half_ppr ?? projection?.pts_std ?? null;
+      });
+      const projectedBaseTotal = projectedBaseValues.some((points) => points !== null) ? projectedBaseValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
       const adjustedPoints = Number((matchup.starters_points || []).reduce((total, points, index) => {
         const slot = matchup.starters?.[index];
         return total + points * (1 + modifierFactor(modifiers, slot, stats[matchup.starters?.[index] || '']));
@@ -107,6 +122,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         sleeperFinalPoints,
         verificationStatus: sleeperFinalPoints === null ? 'pending' : Math.abs(difference || 0) < 0.01 ? 'correct' : 'mismatch',
         verificationDifference: difference,
+        projectedBasePoints: projectedBaseTotal === null ? null : Number(projectedBaseTotal.toFixed(2)),
         projectedPoints: projectedTotal === null ? null : Number(projectedTotal.toFixed(2)),
         adjustment: Number((matchup.starters_points || []).reduce((total, points, index) => {
           const slot = matchup.starters?.[index];
@@ -118,7 +134,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
           const slot = league.roster_positions?.[index] || 'FLEX';
           const playerStats = stats[playerId];
           const player = players[playerId];
-          const projectedPoints = projections[playerId]?.pts_ppr ?? projections[playerId]?.pts_half_ppr ?? projections[playerId]?.pts_std;
+          const projectedPoints = projectionsByPlayer[playerId]?.pts_ppr ?? projectionsByPlayer[playerId]?.pts_half_ppr ?? projectionsByPlayer[playerId]?.pts_std;
+          const projectionFactor = modifierFactor(modifiers, slot, playerStats);
           const adjustment = points * modifierFactor(modifiers, slot, playerStats);
           return [{
             id: playerId,
@@ -129,7 +146,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
             modifier: modifierDescription(modifiers, slot, playerStats),
             adjustment: Number(adjustment.toFixed(2)),
             adjustedPoints: Number((points + adjustment).toFixed(2)),
-            projectedPoints: typeof projectedPoints === 'number' ? Number((projectedPoints * (1 + modifierFactor(modifiers, slot, playerStats))).toFixed(2)) : null,
+            projectedPoints: typeof projectedPoints === 'number' ? Number(projectedPoints.toFixed(2)) : null,
+            projectedAdjustedPoints: typeof projectedPoints === 'number' ? Number((projectedPoints * (1 + projectionFactor)).toFixed(2)) : null,
           }];
         }),
         starters: matchup.starters?.length || roster?.starters?.length || 0,

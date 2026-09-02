@@ -7,11 +7,12 @@ import { getModifierSchedule, getWeeklyModifiers, WeeklyModifier } from '@/lib/m
 
 const storageKey = 'wild-card-leagues';
 const redirectKey = 'wild-card-redirected';
+type SavedLeague = { id: string; name: string };
 
 export default function Home() {
   const router = useRouter();
   const [leagueId, setLeagueId] = useState('');
-  const [savedLeagues, setSavedLeagues] = useState<string[]>([]);
+  const [savedLeagues, setSavedLeagues] = useState<SavedLeague[]>([]);
   const [message, setMessage] = useState('Enter a Sleeper league ID to start tracking your league.');
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -19,20 +20,49 @@ export default function Home() {
   const schedule = useMemo(() => getModifierSchedule(), []);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as string[];
-      const unique = [...new Set(stored.filter(Boolean))];
+    async function loadSavedLeagues() {
+      try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (string | SavedLeague)[];
+      const unique = Array.from(new Map<string, SavedLeague>(stored
+        .map((league): [string, SavedLeague] => {
+          const saved = typeof league === 'string' ? { id: league, name: league } : league;
+          return [saved.id, saved];
+        })
+        .filter(([id]) => Boolean(id))).values());
       setSavedLeagues(unique);
+
+      const leaguesToName = unique.filter((league) => league.name === league.id);
+      if (leaguesToName.length > 0) {
+        const namedLeagues = await Promise.all(leaguesToName.map(async (league) => {
+          try {
+            const response = await fetch(`/api/leagues/validate?leagueId=${league.id}`);
+            if (!response.ok) return league;
+            const result = await response.json() as { league?: { name?: string } };
+            return { ...league, name: result.league?.name || league.name };
+          } catch {
+            return league;
+          }
+        }));
+        const namesById = new Map(namedLeagues.map((league) => [league.id, league.name]));
+        const upgraded = unique.map((league) => ({ ...league, name: namesById.get(league.id) || league.name }));
+        setSavedLeagues(upgraded);
+        localStorage.setItem(storageKey, JSON.stringify(upgraded));
+      } else {
+        localStorage.setItem(storageKey, JSON.stringify(unique));
+      }
 
       // Only redirect on first visit, not on back navigation
       const hasRedirected = sessionStorage.getItem(redirectKey);
       if (unique.length === 1 && !hasRedirected) {
         sessionStorage.setItem(redirectKey, 'true');
-        router.replace(`/leagues/${unique[0]}`);
+        router.replace(`/leagues/${unique[0].id}`);
       }
-    } catch {
-      setSavedLeagues([]);
+      } catch {
+        setSavedLeagues([]);
+      }
     }
+
+    loadSavedLeagues();
   }, [router]);
 
   async function connectLeague(event: FormEvent<HTMLFormElement>) {
@@ -55,7 +85,7 @@ export default function Home() {
         throw new Error(result.error || 'Sleeper could not validate that league.');
       }
 
-      const updated = [id, ...savedLeagues.filter((league) => league !== id)].slice(0, 5);
+      const updated = [{ id, name: result.league.name || id }, ...savedLeagues.filter((league) => league.id !== id)].slice(0, 5);
       localStorage.setItem(storageKey, JSON.stringify(updated));
       setSavedLeagues(updated);
       setLeagueId('');
@@ -72,7 +102,7 @@ export default function Home() {
   }
 
   function removeLeague(id: string) {
-    const updated = savedLeagues.filter((league) => league !== id);
+    const updated = savedLeagues.filter((league) => league.id !== id);
     localStorage.setItem(storageKey, JSON.stringify(updated));
     setSavedLeagues(updated);
   }
@@ -150,12 +180,12 @@ export default function Home() {
           </div>
 
           <div className="saved-list">
-            {savedLeagues.map((id) => (
-              <div className="saved-league" key={id}>
-                <span>{id}</span>
+            {savedLeagues.map((league) => (
+              <div className="saved-league" key={league.id}>
+                <span>{league.name}</span>
                 <div>
-                  <Link href={`/leagues/${id}`}>Open league →</Link>
-                  <button type="button" onClick={() => removeLeague(id)} aria-label={`Remove league ${id}`}>
+                  <Link href={`/leagues/${league.id}`}>Open league →</Link>
+                  <button type="button" onClick={() => removeLeague(league.id)} aria-label={`Remove league ${league.name}`}>
                     Remove
                   </button>
                 </div>

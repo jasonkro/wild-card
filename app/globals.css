@@ -1,6 +1,47 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+.player-table .player-table-head, .player-table .player-table-row { grid-template-columns: minmax(0, 1fr) minmax(220px, auto); }
+.player-table .player-table-head { text-align: right; }
+.score-stack { display: grid; gap: 3px; min-width: 220px; }
+.score-line { display: flex; justify-content: flex-end; align-items: baseline; white-space: nowrap; font: 9px "DM Mono", monospace; }
+.score-line strong { font: 600 14px "Space Grotesk", sans-serif; }
+.score-line-actual { color: var(--muted); }
+.score-line-actual strong { color: var(--ink); }
+.score-line-projection { color: var(--muted); }
+.score-line-projection strong { color: var(--coral); }
+.player-table .player-table-row > .score-stack { display: grid; grid-template-columns: 1fr; gap: 3px; }
+.player-table .player-table-head, .player-table .player-table-row { grid-template-columns: minmax(0, 1fr) minmax(90px, 150px) minmax(220px, auto); }
+.player-modifier { color: var(--muted); font: 8px/1.4 "DM Mono", monospace; text-align: right; }
+.league-team > span { display: contents; }
+.league-team > span > b { min-width: 0; }
+.league-team > span > small { display: block; color: var(--muted); font: 8px/1.5 "DM Mono", monospace; margin-top: 5px; }
+.league-score-summary { display: grid !important; gap: 5px; min-width: 270px; margin: 0 !important; text-align: right; }
+.league-score-summary > span { display: block; }
+.league-score-summary > span { white-space: nowrap; }
+.league-score-summary b { display: inline; color: var(--ink); font: 600 13px "Space Grotesk", sans-serif; }
+.league-team > strong { flex: 0 0 auto; color: var(--ink); font-size: 24px; }
+@media (max-width: 760px) {
+	.player-table .player-table-head, .player-table .player-table-row { grid-template-columns: minmax(0, 1fr) minmax(75px, 105px) minmax(170px, auto); gap: 7px; }
+	.player-table .player-table-head { font-size: 7px; }
+	.score-stack { min-width: 170px; }
+	.score-line { font-size: 8px; }
+	.score-line strong { font-size: 13px; }
+	.player-modifier { font-size: 7px; }
+}
+@media (max-width: 480px) {
+	.league-team { align-items: flex-start; }
+	.league-team > span { display: block; flex: 1; }
+	.league-team > span > small { margin-top: 5px; }
+	.league-score-summary { min-width: 0; text-align: right; }
+	.league-team > strong { font-size: 20px; }
+}
+.league-team .league-score-summary b { display: inline !important; }
+.matchup-team-score { min-width: 0; margin-top: 7px !important; text-align: left; justify-items: start; font-size: 8px; }
+.matchup-team-score b { font-size: 11px; }
+.player-table-row > div:first-child small { white-space: nowrap; }
+
+
 * { box-sizing: border-box; }
 :root { --ink: #172321; --paper: #f2f0e9; --muted: #4d5b55; --line: #c9cec6; --lime: #d4ef52; --coral: #ff745b; --blue: #8fc9e8; --dark: #172321; }
 html, body { margin: 0; min-height: 100%; background: var(--paper); color: var(--ink); }
@@ -29,3 +70,28 @@ main { max-width: 1250px; margin: 0 auto; padding: 76px 5vw 90px; }.intro-sectio
 .topbar-right { display: flex; align-items: center; gap: 24px; }.guide-nav-link, .guide-commissioner-link { color: var(--coral); font: 10px "DM Mono", monospace; text-decoration: none; }.guide-nav-link:hover, .guide-commissioner-link:hover { color: var(--ink); }
 .guide-page { max-width: 1100px; margin: 0 auto; padding: 55px 5vw 70px; }.guide-top { display: flex; justify-content: space-between; align-items: center; }.guide-header { display: grid; grid-template-columns: 1fr .55fr; gap: 12%; align-items: end; margin: 72px 0 58px; }.guide-header h1 { font-size: clamp(48px, 7vw, 80px); margin-top: 8px; }.guide-lede { max-width: 300px; margin: 0 0 5px; color: var(--muted); font-size: 17px; line-height: 1.45; }.guide-principle { display: grid; grid-template-columns: .55fr 1fr; gap: 12%; padding: 25px 0 30px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }.guide-principle h2, .guide-section-heading h2 { margin: 7px 0 0; font-size: 27px; letter-spacing: -.03em; }.guide-principle p, .guide-rule p, .guide-task p, .guide-status-grid p { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }.guide-section { margin-top: 68px; }.guide-section-heading { display: grid; grid-template-columns: .55fr 1fr; gap: 12%; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 18px; }.guide-rule-list, .guide-task-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }.guide-rule, .guide-task { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 23px 0; border-bottom: 1px solid var(--line); }.guide-number { color: var(--coral); font: 13px "DM Mono", monospace; }.guide-rule h3, .guide-task h3 { margin: 0 0 7px; font-size: 16px; }.commissioner-guide-section { background: var(--dark); color: var(--paper); padding: 28px 30px 6px; }.commissioner-guide-section .guide-section-heading { border-color: #ffffff2b; }.commissioner-guide-section .eyebrow, .commissioner-guide-section .guide-task p { color: #9ba69f; }.guide-task-marker { color: var(--lime); font: 9px "DM Mono", monospace; padding-top: 3px; }.commissioner-guide-section .guide-task { border-color: #ffffff20; }.guide-status-section { margin-top: 68px; }.guide-status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 22px; }.guide-status-grid > div { padding: 18px; background: #e9e7df; border: 1px solid var(--line); }.guide-status { display: inline-block; margin-bottom: 12px; font: 9px "DM Mono", monospace; }.guide-status.correct { color: #33805c; }.guide-status.check-needed { color: var(--coral); }.guide-status.pending { color: #4b8ca8; }.guide-footer { display: flex; justify-content: space-between; margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font: 9px "DM Mono", monospace; }.guide-footer a { color: var(--coral); text-decoration: none; }
 @media (max-width: 760px) { .topbar-right { gap: 0; }.guide-page { padding: 35px 22px 65px; }.guide-top { align-items: flex-start; gap: 18px; }.guide-header { display: block; margin: 52px 0 42px; }.guide-header h1 { font-size: 52px; margin-bottom: 25px; }.guide-lede { font-size: 15px; }.guide-principle, .guide-section-heading { display: block; }.guide-principle h2 { margin-bottom: 12px; }.guide-section-heading h2 { margin-top: 8px; }.guide-rule-list, .guide-task-list, .guide-status-grid { grid-template-columns: 1fr; }.commissioner-guide-section { padding: 24px 18px 5px; margin-left: -2px; margin-right: -2px; }.guide-status-section { margin-top: 52px; }.guide-footer { gap: 20px; line-height: 1.5; }.guide-footer a { text-align: right; } }
+
+@media (max-width: 480px) {
+	.topbar { padding: 0 16px; }
+	.wordmark { font-size: 10px; }
+	.topbar-right { min-width: 44px; }
+	.guide-nav-link, .guide-commissioner-link { display: inline-flex; align-items: center; min-height: 44px; }
+	.icon-button { width: 44px; height: 44px; }
+	.home-page, .league-page, .matchup-page, .commissioner-page, .verification-page, .guide-page { padding-right: 16px; padding-left: 16px; }
+	.intro-section { padding-bottom: 42px; }
+	.intro-section h1, .league-page-header h1, .matchup-page-header h1, .verification-header h1 { font-size: 46px; }
+	.preview-heading, .section-heading, .league-page-header, .matchup-page-header, .verification-header, .commissioner-top { align-items: flex-start; flex-direction: column; gap: 16px; }
+	.preview-heading { flex-direction: row; align-items: center; }
+	.status-pill { flex: 0 0 auto; }
+	.next-modifier-list, .matchup-team-panels, .commissioner-modifier-grid { grid-template-columns: 1fr; }
+	.saved-league { align-items: flex-start; gap: 10px; }
+	.saved-league > div { display: grid; gap: 8px; text-align: right; }
+	.saved-league button { min-height: 44px; }
+	.verification-toolbar { align-items: flex-start; flex-wrap: wrap; }
+	.verification-toolbar span { margin-left: 0; width: 100%; }
+	.verification-team { grid-template-columns: 1fr auto; gap: 8px 12px; }
+	.verification-team > :nth-child(n + 2) { grid-column: 2; }
+	.verification-team > strong { grid-row: 1 / span 2; }
+	.error-state { align-items: flex-start; flex-wrap: wrap; }
+	.error-state button { min-height: 44px; }
+}
