@@ -8,7 +8,7 @@ const playerRules = [
 ];
 
 const commissionerTasks = [
-  ['Before the week', 'Review the upcoming modifier set in the commissioner desk and confirm the rules are ready before the weekly lock.'],
+  ['Before the week', 'Review the upcoming modifier set in the commissioner desk and confirm the rules are ready before publishing them.'],
   ['During games', 'Manage the league in Sleeper normally. The app reads Sleeper data and does not replace Sleeper roster or scoring controls.'],
   ['After games', 'Review the final player and team scores in Sleeper. Enter any official corrections there using Sleeper’s commissioner tools.'],
   ['Run the audit', 'Open the league’s Verification page and check every team. A mismatch means the Sleeper final score and the modifier calculation need review.'],
@@ -16,9 +16,8 @@ const commissionerTasks = [
 ];
 
 const possibleModifiers = [
-  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A percentage boost or penalty applies to every eligible player in that lineup position.'],
-  ['STAT EVENT', 'PASS TD · RUSH TD · REC TD', 'A percentage adjustment applies when a player records one of the selected touchdown events.'],
-  ['NEGATIVE EVENT', 'INTERCEPTION · FUMBLE LOST', 'A percentage adjustment can be tied to mistakes recorded in the official Sleeper stats.'],
+  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A boost or penalty from -20% to +20% applies to every eligible player in that lineup position.'],
+  ['STAT', 'PASS TD · RUSH TD · REC TD · INTERCEPTION · FUMBLE LOST', 'Touchdown events add 5% or 10%. Interceptions and fumbles lost subtract 5% or 10%.'],
 ];
 
 export default function GuidePage() {
@@ -31,23 +30,23 @@ export default function GuidePage() {
 
       <header className="guide-header">
         <div>
-          <span className="eyebrow">THE LEAGUE OF CHAOS PLAYBOOK</span>
+          <span className="eyebrow">THE WILD CARD LEAGUE PLAYBOOK</span>
           <h1>How the league works.</h1>
         </div>
-          <p className="guide-lede">Sleeper runs the league. League of Chaos adds the weekly layer, then checks the math when the games are done.</p>
+          <p className="guide-lede">Sleeper runs the league. Wild Card League adds the weekly layer, then checks the math when the games are done.</p>
       </header>
 
       <section className="guide-principle">
         <span className="eyebrow">ONE SOURCE OF TRUTH</span>
         <div>
           <h2>Sleeper is official.</h2>
-          <p>Roster changes, matchups, player stats, and final team scores all come from Sleeper. League of Chaos calculates the weekly modifiers and gives the commissioner a clear audit trail. It never replaces the official league record.</p>
+          <p>Roster changes, matchups, player stats, and final team scores all come from Sleeper. Wild Card League calculates the weekly modifiers and gives the commissioner a clear audit trail. It never replaces the official league record.</p>
         </div>
       </section>
 
       <section className="guide-section">
         <div className="guide-section-heading">
-          <span className="eyebrow">THE CHAOS MENU</span>
+          <span className="eyebrow">THE WILDCARD MENU</span>
           <h2>Possible modifiers</h2>
         </div>
         <div className="guide-possible-grid">
@@ -104,7 +103,7 @@ export default function GuidePage() {
       </section>
 
       <footer className="guide-footer">
-        <span>LEAGUE OF CHAOS / PLAYBOOK</span>
+        <span>WILD CARD LEAGUE / PLAYBOOK</span>
         <Link href="/">Connect a league →</Link>
       </footer>
     </main>

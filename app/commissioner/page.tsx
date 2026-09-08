@@ -21,13 +21,16 @@ export default async function CommissionerPage({ searchParams }: { searchParams:
     );
   }
 
-  const modifiers = await getStoredModifiers(2);
+  const weeks = Object.fromEntries(await Promise.all(Array.from({ length: 18 }, (_, index) => {
+    const week = index + 1;
+    return getStoredModifiers(week).then((modifiers) => [week, modifiers]);
+  })));
 
   return (
     <main className="commissioner-page">
       <div className="commissioner-top"><a className="back-link" href="/">← Back to league board</a><form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}><button className="text-button" type="submit">Sign out</button></form></div>
       <div className="matchup-page-header"><div><span className="eyebrow">PRIVATE CONTROL ROOM</span><h1>Commissioner desk.</h1></div><span className="status-pill dark-pill">PASSWORD ACCESS</span></div>
-      <section className="control-section"><div className="section-heading"><div><span className="eyebrow">UPCOMING RULES / WEEK 02</span><h2>Global modifiers</h2></div><span className="lock-label">LOCKS SUNDAY / 8:00 PM ET</span></div><CommissionerControls initialModifiers={modifiers} /></section>
+      <section className="control-section"><div className="section-heading"><div><span className="eyebrow">SEASON PLAN / 18 WEEKS</span><h2>Global modifiers</h2></div><span className="lock-label">MANUAL CONTROL</span></div><CommissionerControls initialWeeks={weeks} /></section>
       <section className="control-section"><div className="section-heading"><div><span className="eyebrow">FINAL SCORE WORKFLOW</span><h2>Commissioner adjustments</h2></div></div><p className="page-note">Final adjustments will appear here after games are complete. Every saved change will retain its Week 1 modifier and calculation version.</p></section>
     </main>
   );

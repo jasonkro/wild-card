@@ -16,10 +16,17 @@ export default function Home() {
   const [message, setMessage] = useState('Enter a Sleeper league ID to start tracking your league.');
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const currentModifiers = useMemo<WeeklyModifier[]>(() => getWeeklyModifiers(1), []);
+  const [currentModifiers, setCurrentModifiers] = useState<WeeklyModifier[]>(() => getWeeklyModifiers(1));
   const schedule = useMemo(() => getModifierSchedule(), []);
 
   useEffect(() => {
+    fetch('/api/modifiers?week=1')
+      .then((response) => response.ok ? response.json() as Promise<{ modifiers?: WeeklyModifier[] }> : null)
+      .then((result) => {
+        if (result?.modifiers) setCurrentModifiers(result.modifiers);
+      })
+      .catch(() => undefined);
+
     async function loadSavedLeagues() {
       try {
       const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (string | SavedLeague)[];
@@ -110,7 +117,7 @@ export default function Home() {
   return (
     <main className="home-page">
       <header className="topbar">
-        <div className="wordmark">LEAGUE OF CHAOS</div>
+        <div className="wordmark">WILD CARD LEAGUE</div>
         <div className="season-chip">CURRENT RULES / WEEK 01</div>
         <div className="topbar-right">
           <Link className="guide-nav-link" href="/guide">How it works</Link>
@@ -119,7 +126,7 @@ export default function Home() {
 
       <section className="intro-section">
         <div className="kicker">SLEEPER LEAGUE COMPANION</div>
-        <h1>Your league has chosen Chaos.</h1>
+        <h1>Your league just got wild.</h1>
         <p className="intro-copy">Add your league ID and keep your saved connections here. If you only have one, it jumps straight to that league dashboard.</p>
 
         <form className="connect-form" onSubmit={connectLeague}>
@@ -145,7 +152,7 @@ export default function Home() {
         <div className="section-heading">
           <div>
             <span className="eyebrow">CURRENT MODIFIERS</span>
-            <h2>What chaos is active this week?</h2>
+            <h2>This week&apos;s Wild Card</h2>
           </div>
           <span className="status-pill">{schedule.visibleToUsers ? 'LIVE' : 'LOCKED'}</span>
         </div>
@@ -154,7 +161,7 @@ export default function Home() {
           {currentModifiers.map((modifier) => (
             <div className="next-modifier" style={{ background: '#e9e7df', borderLeftColor: 'var(--coral)', color: 'var(--ink)' }} key={`${modifier.label}-${modifier.target ?? 'stat'}`}>
               <span>{modifier.label}</span>
-              <b style={{ color: 'var(--ink)' }}>{modifier.sign > 0 ? '+' : '−'}{modifier.percent}% {modifier.kind === 'position' ? modifier.target : 'STAT'}</b>
+              <b style={{ color: 'var(--ink)' }}>{modifier.sign > 0 ? '+' : '−'}{modifier.percent}% {modifier.kind === 'position' ? modifier.target : modifier.stats?.[0]?.replace('_', ' ').toUpperCase() || 'STAT'}</b>
             </div>
           ))}
         </div>

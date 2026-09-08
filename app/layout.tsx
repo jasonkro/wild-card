@@ -3,7 +3,7 @@ import "./globals.css";
 import "./league-contrast.css";
 
 export const metadata: Metadata = {
-  title: "League of Chaos | Sleeper Modifier League",
+  title: "Wild Card League | Sleeper Modifier League",
   description: "Weekly fantasy football modifiers and score audits for your Sleeper league.",
 };
 

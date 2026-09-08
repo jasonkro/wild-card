@@ -58,3 +58,24 @@ export function getWeeklyModifiers(_week: number): WeeklyModifier[] {
     return { kind: 'position', target, label: labels[target], sign, percent: percentages[Math.floor(nextRandom() * percentages.length)] };
   });
 }
+
+export function getRandomWeeklyModifiers(): WeeklyModifier[] {
+  const targets: PositionTarget[] = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
+  const labels: Record<PositionTarget, string> = {
+    QB: 'AIR RAID', RB: 'RUSH HOUR', WR: 'WIDE OPEN', TE: 'TIGHT WINDOW', FLEX: 'LONG SHOT', K: 'BOOT LEG', DEF: 'LOCKDOWN',
+  };
+  const selected: PositionTarget[] = [];
+  while (selected.length < 2) {
+    const target = targets[Math.floor(Math.random() * targets.length)];
+    if (!selected.includes(target)) selected.push(target);
+  }
+  const positionPercentages: WeeklyModifier['percent'][] = [5, 10, 15, 20];
+  const positionModifiers: WeeklyModifier[] = selected.map((target) => ({
+    kind: 'position', target, label: labels[target], sign: Math.random() > 0.5 ? 1 : -1, percent: positionPercentages[Math.floor(Math.random() * positionPercentages.length)],
+  }));
+  const positiveEvents = ['pass_td', 'rush_td', 'rec_td'] as const;
+  const negativeEvents = ['int', 'fum_lost'] as const;
+  const isPositive = Math.random() > 0.4;
+  const event = isPositive ? positiveEvents[Math.floor(Math.random() * positiveEvents.length)] : negativeEvents[Math.floor(Math.random() * negativeEvents.length)];
+  return [...positionModifiers, { kind: 'stat', label: `${event.replace('_', ' ').toUpperCase()} MODIFIER`, sign: isPositive ? 1 : -1, percent: (Math.random() > 0.5 ? 5 : 10) as 5 | 10, stats: [event] }];
+}
