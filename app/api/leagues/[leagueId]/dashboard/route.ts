@@ -108,7 +108,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
       });
       const projectedBaseTotal = projectedBaseValues.some((points) => points !== null) ? projectedBaseValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
       const adjustedPoints = Number((matchup.starters_points || []).reduce((total, points, index) => {
-        const slot = matchup.starters?.[index];
+          const slot = league.roster_positions?.[index] || 'FLEX';
         return total + points * (1 + modifierFactor(modifiers, slot, stats[matchup.starters?.[index] || '']));
       }, 0).toFixed(2));
       const sleeperFinalPoints = typeof matchup.custom_points === 'number' ? Number(matchup.custom_points.toFixed(2)) : null;
@@ -125,7 +125,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         projectedBasePoints: projectedBaseTotal === null ? null : Number(projectedBaseTotal.toFixed(2)),
         projectedPoints: projectedTotal === null ? null : Number(projectedTotal.toFixed(2)),
         adjustment: Number((matchup.starters_points || []).reduce((total, points, index) => {
-          const slot = matchup.starters?.[index];
+           const slot = league.roster_positions?.[index] || 'FLEX';
           return total + points * modifierFactor(modifiers, slot, stats[matchup.starters?.[index] || '']);
         }, 0).toFixed(2)),
         playerBreakdown: (matchup.starters || []).flatMap((playerId, index) => {
