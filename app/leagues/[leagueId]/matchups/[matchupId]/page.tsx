@@ -18,6 +18,7 @@ type Player = {
 };
 type Team = {
   name: string;
+  matchupId: number;
   points: number;
   adjustedPoints: number;
   projectedBasePoints: number | null;
@@ -43,19 +44,28 @@ export default function MatchupPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/leagues/${params.leagueId}/dashboard?week=${week}`)
-      .then((response) => response.json())
-      .then((data) => {
+    let active = true;
+    async function loadMatchup() {
+      try {
+        const response = await fetch(`/api/leagues/${params.leagueId}/dashboard?week=${week}`, {
+          cache: "no-store",
+        });
+        if (!response.ok || !active) return;
+        const data = (await response.json()) as { league?: { name?: string }; modifiers?: Modifier[]; teams?: Team[] };
         setLeagueName(data.league?.name || "Sleeper league");
         setModifiers(data.modifiers || []);
-        setTeams(
-          (data.teams || []).filter(
-            (team: { matchupId: number }) =>
-              String(team.matchupId) === params.matchupId,
-          ),
-        );
-      })
-      .finally(() => setLoading(false));
+        setTeams((data.teams || []).filter((team) => String(team.matchupId) === params.matchupId));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadMatchup();
+    const refreshTimer = window.setInterval(loadMatchup, 60_000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
   }, [params.leagueId, params.matchupId, week]);
 
   return (

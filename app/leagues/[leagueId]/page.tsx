@@ -53,6 +53,11 @@ export default function LeaguePage() {
       const response = await fetch(`/api/leagues/${leagueId}/dashboard`, {
         cache: "no-store",
       });
+        if (response.status === 304) {
+          setLoading(false);
+          setRetryCount(0);
+          return;
+        }
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
           error?: string;

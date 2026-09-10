@@ -3,12 +3,13 @@ import { WeeklyModifier } from '@/lib/modifiers';
 import { getStoredModifiers } from '@/lib/modifier-store';
 import { claimLeagueRefresh, saveLeagueRefreshData } from '@/lib/league-refresh';
 import { prisma } from '@/lib/prisma';
+import { getEspnLiveStats } from '@/lib/espn-stats';
 
 type SleeperUser = { user_id: string; display_name?: string; metadata?: { team_name?: string } };
 type SleeperRoster = { roster_id: number; owner_id?: string; matchup_id?: number; points?: number; starters?: string[] };
 type SleeperMatchup = { roster_id: number; matchup_id: number; points?: number; custom_points?: number | null; starters?: string[]; starters_points?: number[] };
 type SleeperState = { week?: number; display_week?: number; season?: string };
-type SleeperPlayer = { full_name?: string; first_name?: string; last_name?: string; position?: string };
+type SleeperPlayer = { full_name?: string; first_name?: string; last_name?: string; position?: string; team?: string };
 type SleeperProjection = { pts_ppr?: number; pts_half_ppr?: number; pts_std?: number };
 type SleeperFreeAgent = { player_id?: string; projected_stats?: SleeperProjection };
 type SleeperStats = { pass_td?: number; rush_td?: number; rec_td?: number; return_td?: number; int?: number; fum_lost?: number };
@@ -83,8 +84,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         projectionsByPlayer[player.player_id] = player.projected_stats;
       }
     });
-    const statsResponse = await fetch(`${base}/stats/nfl/${league.season || state.season || '2026'}/${week}`, { next: { revalidate: 60 } });
-    const stats = statsResponse.ok ? await statsResponse.json() as Record<string, SleeperStats> : {};
+    const statsResponse = await fetch(`${base}/stats/nfl/${league.season || state.season || '2026'}/${week}`, { cache: 'no-store' });
+    const sleeperStats = statsResponse.ok ? await statsResponse.json() as Record<string, SleeperStats> : {};
+    const espnStats = await getEspnLiveStats(league.season || state.season || '2026', week, players);
+    const statsForPlayer = (playerId: string) => ({ ...sleeperStats[playerId], ...espnStats[playerId] });
     const matchupsResponse = await fetch(`${base}/league/${leagueId}/matchups/${week}`, { next: { revalidate: 30 } });
     const matchups = matchupsResponse.ok ? await matchupsResponse.json() as SleeperMatchup[] : [];
     const usersById = new Map(users.map((user) => [user.user_id, user]));
@@ -98,7 +101,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         const projectedPoints = projection?.pts_ppr ?? projection?.pts_half_ppr ?? projection?.pts_std;
         if (typeof projectedPoints !== 'number') return null;
         const slot = league.roster_positions?.[index] || 'FLEX';
-        return projectedPoints * (1 + modifierFactor(modifiers, slot, stats[playerId]));
+        return projectedPoints * (1 + modifierFactor(modifiers, slot, statsForPlayer(playerId)));
       });
       const projectedTotal = projectedValues.some((points) => points !== null) ? projectedValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
       const projectedBaseValues = (matchup.starters || []).map((playerId) => {
@@ -109,7 +112,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
       const projectedBaseTotal = projectedBaseValues.some((points) => points !== null) ? projectedBaseValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
       const adjustedPoints = Number((matchup.starters_points || []).reduce((total, points, index) => {
           const slot = league.roster_positions?.[index] || 'FLEX';
-        return total + points * (1 + modifierFactor(modifiers, slot, stats[matchup.starters?.[index] || '']));
+        return total + points * (1 + modifierFactor(modifiers, slot, statsForPlayer(matchup.starters?.[index] || '')));
       }, 0).toFixed(2));
       const sleeperFinalPoints = typeof matchup.custom_points === 'number' ? Number(matchup.custom_points.toFixed(2)) : null;
       const difference = sleeperFinalPoints === null ? null : Number((sleeperFinalPoints - adjustedPoints).toFixed(2));
@@ -126,13 +129,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         projectedPoints: projectedTotal === null ? null : Number(projectedTotal.toFixed(2)),
         adjustment: Number((matchup.starters_points || []).reduce((total, points, index) => {
            const slot = league.roster_positions?.[index] || 'FLEX';
-          return total + points * modifierFactor(modifiers, slot, stats[matchup.starters?.[index] || '']);
+          return total + points * modifierFactor(modifiers, slot, statsForPlayer(matchup.starters?.[index] || ''));
         }, 0).toFixed(2)),
         playerBreakdown: (matchup.starters || []).flatMap((playerId, index) => {
           if (playerId === '0') return [];
           const points = matchup.starters_points?.[index] || 0;
           const slot = league.roster_positions?.[index] || 'FLEX';
-          const playerStats = stats[playerId];
+          const playerStats = statsForPlayer(playerId);
           const player = players[playerId];
           const projectedPoints = projectionsByPlayer[playerId]?.pts_ppr ?? projectionsByPlayer[playerId]?.pts_half_ppr ?? projectionsByPlayer[playerId]?.pts_std;
           const projectionFactor = modifierFactor(modifiers, slot, playerStats);
