@@ -1,3 +1,4 @@
+import { getModifierSchedule } from '@/lib/modifiers';
 import { getStoredModifiers } from '@/lib/modifier-store';
 import { NextResponse } from 'next/server';
 
@@ -7,5 +8,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Week must be between 1 and 18.' }, { status: 400 });
   }
 
-  return NextResponse.json({ week, modifiers: await getStoredModifiers(week) });
+  const stateResponse = await fetch('https://api.sleeper.app/v1/state/nfl', { next: { revalidate: 60 } });
+  const state = stateResponse.ok ? await stateResponse.json() as { week?: number; display_week?: number } : {};
+  const currentWeek = state.week || state.display_week || 1;
+  const nextWeekIsAvailable = getModifierSchedule().visibleToUsers;
+  const modifiersAvailable = week <= currentWeek || (week === currentWeek + 1 && nextWeekIsAvailable);
+
+  return NextResponse.json({ week, modifiers: modifiersAvailable ? await getStoredModifiers(week) : [], modifiersAvailable });
 }

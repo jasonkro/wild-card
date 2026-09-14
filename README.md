@@ -4,7 +4,13 @@ Sleeper fantasy football companion with global weekly modifiers.
 
 ## Local setup
 
-Run `npm install`, copy `.env.example` to `.env.local`, and set a strong `COMMISSIONER_PASSWORD`. Add a hosted PostgreSQL `DATABASE_URL` for shared persistence. The commissioner controls use a server-side password and do not store the password in the browser.
+Run `npm install`, copy `.env.example` to `.env.local`, and set a strong `COMMISSIONER_PASSWORD`. For local development, use the PostgreSQL service running on your machine:
+
+```dotenv
+DATABASE_URL=postgresql://postgres:your-local-password@127.0.0.1:5432/wild_card
+```
+
+Create the `wild_card` database once, then run the migration command below. Do not add `sslmode=require` to the local URL. Use a hosted PostgreSQL URL only when you need shared persistence. The commissioner controls use a server-side password and do not store the password in the browser.
 
 Run `npm run dev` to start the app.
 

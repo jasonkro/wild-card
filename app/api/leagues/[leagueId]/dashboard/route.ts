@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { WeeklyModifier } from '@/lib/modifiers';
+import { getModifierSchedule, WeeklyModifier } from '@/lib/modifiers';
 import { getStoredModifiers } from '@/lib/modifier-store';
 import { claimLeagueRefresh, saveLeagueRefreshData } from '@/lib/league-refresh';
 import { prisma } from '@/lib/prisma';
@@ -65,7 +65,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const state = await stateResponse.json() as SleeperState;
     const players = await playersResponse.json() as Record<string, SleeperPlayer>;
     const requestedWeek = Number(new URL(request.url).searchParams.get('week'));
-    const week = Number.isInteger(requestedWeek) && requestedWeek >= 1 && requestedWeek <= 18 ? requestedWeek : state.week || state.display_week || 1;
+    const currentWeek = state.week || state.display_week || 1;
+    const week = Number.isInteger(requestedWeek) && requestedWeek >= 1 && requestedWeek <= 18 ? requestedWeek : currentWeek;
     if (isCurrentWeekRequest) {
       const refresh = await claimLeagueRefresh(leagueId);
       if (!refresh.allowed) {
@@ -73,7 +74,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         return NextResponse.json({}, { status: 304, headers: { 'Cache-Control': 'no-store' } });
       }
     }
-    const modifiers = await getStoredModifiers(week);
+    const nextWeekIsAvailable = getModifierSchedule().visibleToUsers;
+    const canViewModifiers = week <= currentWeek || (week === currentWeek + 1 && nextWeekIsAvailable);
+    const modifiers = canViewModifiers ? await getStoredModifiers(week) : [];
+    const upcomingWeek = currentWeek + 1;
+    const upcomingModifiers = nextWeekIsAvailable ? await getStoredModifiers(upcomingWeek) : [];
     const projectionResponse = await fetch(`${base}/projections/nfl/regular/${league.season || state.season || '2026'}/${week}`, { next: { revalidate: 300 } });
     const projections = projectionResponse.ok ? await projectionResponse.json() as Record<string, SleeperProjection> : {};
     const freeAgentsResponse = await fetch(`${base}/league/${leagueId}/free_agents/nfl?week=${week}`, { next: { revalidate: 300 } });
@@ -158,7 +163,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     });
 
     teams.sort((left, right) => left.matchupId - right.matchupId || left.rosterId - right.rosterId);
-    const dashboard = { league: { id: leagueId, name: league.name || 'Unnamed league', season: league.season || state.season || 'Unknown' }, week, refreshedAt: new Date().toISOString(), refreshIntervalSeconds: 60, modifiers, teams };
+    const dashboard = { league: { id: leagueId, name: league.name || 'Unnamed league', season: league.season || state.season || 'Unknown' }, week, currentWeek, modifiersAvailable: canViewModifiers, upcomingWeek, upcomingModifiersAvailable: nextWeekIsAvailable, upcomingModifiers, refreshedAt: new Date().toISOString(), refreshIntervalSeconds: 60, modifiers, teams };
     if (isCurrentWeekRequest) await saveLeagueRefreshData(leagueId, dashboard);
     return NextResponse.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
