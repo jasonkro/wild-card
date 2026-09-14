@@ -8,6 +8,26 @@ export type WeeklyModifier = {
 };
 type PositionTarget = NonNullable<WeeklyModifier['target']>;
 
+const positionLabels: Record<PositionTarget, { positive: string; negative: string }> = {
+  QB: { positive: 'AIR RAID', negative: 'AIR POCKET' },
+  RB: { positive: 'RUSH HOUR', negative: 'RUSH LIMIT' },
+  WR: { positive: 'WIDE OPEN', negative: 'TIGHT COVERAGE' },
+  TE: { positive: 'TIGHT WINDOW', negative: 'TIGHT SQUEEZE' },
+  FLEX: { positive: 'LONG SHOT', negative: 'SHORT LEASH' },
+  K: { positive: 'BOOT LEG', negative: 'COLD FOOT' },
+  DEF: { positive: 'LOCKDOWN', negative: 'SOFT COVERAGE' },
+};
+
+export function getPositionModifierLabel(target: PositionTarget, sign: 1 | -1) {
+  return positionLabels[target][sign > 0 ? 'positive' : 'negative'];
+}
+
+export function normalizeWeeklyModifiers(modifiers: WeeklyModifier[]) {
+  return modifiers.map((modifier) => modifier.kind === 'position' && modifier.target
+    ? { ...modifier, label: getPositionModifierLabel(modifier.target, modifier.sign) }
+    : { ...modifier });
+}
+
 const weekOneModifiers: WeeklyModifier[] = [
   { kind: 'position', target: 'RB', label: 'RUSH HOUR', sign: 1, percent: 20 },
   { kind: 'position', target: 'QB', label: 'AIR RAID', sign: -1, percent: 10 },
@@ -42,9 +62,6 @@ export function getWeeklyModifiers(_week: number): WeeklyModifier[] {
     return seed / 4294967296;
   };
   const targets: PositionTarget[] = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
-  const labels: Record<NonNullable<WeeklyModifier['target']>, string> = {
-    QB: 'AIR RAID', RB: 'RUSH HOUR', WR: 'WIDE OPEN', TE: 'TIGHT WINDOW', FLEX: 'LONG SHOT', K: 'BOOT LEG', DEF: 'LOCKDOWN',
-  };
   const selected: PositionTarget[] = [];
   while (selected.length < 3) {
     const target = targets[Math.floor(nextRandom() * targets.length)];
@@ -53,7 +70,7 @@ export function getWeeklyModifiers(_week: number): WeeklyModifier[] {
   const percentages: WeeklyModifier['percent'][] = [5, 10, 15, 20];
   return selected.map((target) => {
     const sign = nextRandom() > 0.5 ? 1 : -1;
-    return { kind: 'position', target, label: labels[target], sign, percent: percentages[Math.floor(nextRandom() * percentages.length)] };
+    return { kind: 'position', target, label: getPositionModifierLabel(target, sign), sign, percent: percentages[Math.floor(nextRandom() * percentages.length)] };
   });
 }
 

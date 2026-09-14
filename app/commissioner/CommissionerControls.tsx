@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { WeeklyModifier } from '@/lib/modifiers';
+import { getPositionModifierLabel, WeeklyModifier } from '@/lib/modifiers';
 
 const positions = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'] as const;
 const positiveEvents = ['pass_td', 'rush_td', 'rec_td'] as const;
@@ -18,7 +18,16 @@ export default function CommissionerControls({ initialWeeks }: { initialWeeks: R
   const modifiers = weeks[String(selectedWeek)] || [];
 
   function update(index: number, changes: Partial<WeeklyModifier>) {
-    setWeeks((current) => ({ ...current, [selectedWeek]: current[String(selectedWeek)].map((modifier, itemIndex) => itemIndex === index ? { ...modifier, ...changes } : modifier) }));
+    setWeeks((current) => ({
+      ...current,
+      [selectedWeek]: current[String(selectedWeek)].map((modifier, itemIndex) => {
+        if (itemIndex !== index) return modifier;
+        const updated = { ...modifier, ...changes };
+        return updated.kind === 'position' && updated.target
+          ? { ...updated, label: getPositionModifierLabel(updated.target, updated.sign) }
+          : updated;
+      }),
+    }));
   }
 
   function updateStatEvent(index: number, event: typeof positiveEvents[number] | typeof negativeEvents[number]) {
@@ -27,7 +36,7 @@ export default function CommissionerControls({ initialWeeks }: { initialWeeks: R
 
   function updateKind(index: number, kind: WeeklyModifier['kind']) {
     update(index, kind === 'position'
-      ? { kind, target: modifiers[index].target || 'QB', stats: undefined }
+      ? { kind, target: modifiers[index].target || 'QB', label: getPositionModifierLabel((modifiers[index].target || 'QB') as typeof positions[number], modifiers[index].sign), stats: undefined }
       : { kind, target: undefined, stats: modifiers[index].stats || ['rush_td'], sign: modifiers[index].sign > 0 ? 1 : -1, percent: modifiers[index].percent > 10 ? 10 : modifiers[index].percent });
   }
 

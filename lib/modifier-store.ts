@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { getWeeklyModifiers, WeeklyModifier } from '@/lib/modifiers';
+import { getWeeklyModifiers, normalizeWeeklyModifiers, WeeklyModifier } from '@/lib/modifiers';
 import { prisma } from '@/lib/prisma';
 
 const storePath = path.join(process.cwd(), 'data', 'modifiers.json');
@@ -18,14 +18,15 @@ async function readStore(): Promise<StoredModifiers> {
 export async function getStoredModifiers(week: number) {
   if (process.env.DATABASE_URL) {
     const row = await prisma.weeklyModifierSet.findUnique({ where: { season_week: { season: 2026, week } } });
-    if (row) return row.modifiers as unknown as WeeklyModifier[];
-    return getWeeklyModifiers(week);
+    if (row) return normalizeWeeklyModifiers(row.modifiers as unknown as WeeklyModifier[]);
+    return normalizeWeeklyModifiers(getWeeklyModifiers(week));
   }
   const store = await readStore();
-  return store[String(week)] || getWeeklyModifiers(week);
+  return normalizeWeeklyModifiers(store[String(week)] || getWeeklyModifiers(week));
 }
 
 export async function saveStoredModifiers(week: number, modifiers: WeeklyModifier[]) {
+  const normalizedModifiers = normalizeWeeklyModifiers(modifiers);
   if (process.env.DATABASE_URL) {
     const now = new Date();
     const revealAt = new Date(now);
@@ -33,14 +34,14 @@ export async function saveStoredModifiers(week: number, modifiers: WeeklyModifie
     revealAt.setHours(20, 30, 0, 0);
     await prisma.weeklyModifierSet.upsert({
       where: { season_week: { season: 2026, week } },
-      create: { season: 2026, week, modifiers: JSON.parse(JSON.stringify(modifiers)), lockedAt: now, revealAt },
-      update: { modifiers: JSON.parse(JSON.stringify(modifiers)), lockedAt: now, revealAt },
+      create: { season: 2026, week, modifiers: JSON.parse(JSON.stringify(normalizedModifiers)), lockedAt: now, revealAt },
+      update: { modifiers: JSON.parse(JSON.stringify(normalizedModifiers)), lockedAt: now, revealAt },
     });
-    return modifiers;
+    return normalizedModifiers;
   }
   const store = await readStore();
-  store[String(week)] = modifiers;
+  store[String(week)] = normalizedModifiers;
   await fs.mkdir(path.dirname(storePath), { recursive: true });
   await fs.writeFile(storePath, JSON.stringify(store, null, 2), 'utf8');
-  return modifiers;
+  return normalizedModifiers;
 }
