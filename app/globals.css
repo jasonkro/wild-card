@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+.commissioner-modifier-type { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; color: var(--muted); font: 9px "DM Mono", monospace; }
+.commissioner-modifier-type label { color: var(--ink); }
+.commissioner-modifier-type select { border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 8px; font: 9px "DM Mono", monospace; }
+
 .player-table .player-table-head, .player-table .player-table-row { grid-template-columns: minmax(0, 1fr) minmax(220px, auto); }
 .player-table .player-table-head { text-align: right; }
 .score-stack { display: grid; gap: 3px; min-width: 220px; }

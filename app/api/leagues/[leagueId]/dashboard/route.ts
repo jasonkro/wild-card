@@ -79,9 +79,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const modifiers = canViewModifiers ? await getStoredModifiers(week) : [];
     const upcomingWeek = currentWeek + 1;
     const upcomingModifiers = nextWeekIsAvailable ? await getStoredModifiers(upcomingWeek) : [];
-    const projectionResponse = await fetch(`${base}/projections/nfl/regular/${league.season || state.season || '2026'}/${week}`, { next: { revalidate: 300 } });
+    const projectionResponse = await fetch(`${base}/projections/nfl/regular/${league.season || state.season || '2026'}/${week}`, { cache: 'no-store' });
     const projections = projectionResponse.ok ? await projectionResponse.json() as Record<string, SleeperProjection> : {};
-    const freeAgentsResponse = await fetch(`${base}/league/${leagueId}/free_agents/nfl?week=${week}`, { next: { revalidate: 300 } });
+    const freeAgentsResponse = await fetch(`${base}/league/${leagueId}/free_agents/nfl?week=${week}`, { cache: 'no-store' });
     const freeAgents = freeAgentsResponse.ok ? await freeAgentsResponse.json() as SleeperFreeAgent[] : [];
     const projectionsByPlayer = { ...projections };
     freeAgents.forEach((player) => {
