@@ -3,7 +3,7 @@ export type WeeklyModifier = {
   target?: 'QB' | 'RB' | 'WR' | 'TE' | 'FLEX' | 'K' | 'DEF';
   label: string;
   sign: 1 | -1;
-  percent: 5 | 10 | 15 | 20;
+  percent: 5 | 10 | 15 | 20 | 25;
   stats?: ('pass_td' | 'rush_td' | 'rec_td' | 'int' | 'fum_lost')[];
 };
 type PositionTarget = NonNullable<WeeklyModifier['target']>;
@@ -67,7 +67,7 @@ export function getWeeklyModifiers(_week: number): WeeklyModifier[] {
     const target = targets[Math.floor(nextRandom() * targets.length)];
     if (!selected.includes(target)) selected.push(target);
   }
-  const percentages: WeeklyModifier['percent'][] = [5, 10, 15, 20];
+  const percentages: WeeklyModifier['percent'][] = [10, 15, 20, 25];
   return selected.map((target) => {
     const sign = nextRandom() > 0.5 ? 1 : -1;
     return { kind: 'position', target, label: getPositionModifierLabel(target, sign), sign, percent: percentages[Math.floor(nextRandom() * percentages.length)] };
@@ -81,7 +81,7 @@ export function getRandomWeeklyModifiers(): WeeklyModifier[] {
     const target = targets[Math.floor(Math.random() * targets.length)];
     if (!selected.includes(target)) selected.push(target);
   }
-  const positionPercentages: WeeklyModifier['percent'][] = [5, 10, 15, 20];
+  const positionPercentages: WeeklyModifier['percent'][] = [10, 15, 20, 25];
   return selected.map((target) => {
     const sign = Math.random() > 0.5 ? 1 : -1;
     return {

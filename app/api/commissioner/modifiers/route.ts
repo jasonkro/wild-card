@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const positiveEvents = new Set(['pass_td', 'rush_td', 'rec_td']);
   const negativeEvents = new Set(['int', 'fum_lost']);
   for (const modifier of modifiers) {
-    if (modifier.kind === 'position' && (!modifier.target || ![5, 10, 15, 20].includes(modifier.percent))) return NextResponse.json({ error: 'Position modifiers must be between -20% and +20%.' }, { status: 400 });
+    if (modifier.kind === 'position' && (!modifier.target || ![10, 15, 20, 25].includes(modifier.percent))) return NextResponse.json({ error: 'Position modifiers must be between -25% and -10%, or +10% and +25%.' }, { status: 400 });
     if (modifier.kind === 'stat') {
       const event = modifier.stats?.[0];
       if ((!event || (!positiveEvents.has(event) && !negativeEvents.has(event))) || ![5, 10].includes(modifier.percent)) return NextResponse.json({ error: 'Stat modifiers must use a touchdown or turnover event at 5% or 10%.' }, { status: 400 });

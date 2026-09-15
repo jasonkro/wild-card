@@ -7,7 +7,7 @@ const positions = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'] as const;
 const positiveEvents = ['pass_td', 'rush_td', 'rec_td'] as const;
 const negativeEvents = ['int', 'fum_lost'] as const;
 const statValues = ['5', '10'];
-const positionValues = ['+5', '+10', '+15', '+20', '-5', '-10', '-15', '-20'];
+const positionValues = ['+10', '+15', '+20', '+25', '-10', '-15', '-20', '-25'];
 
 export default function CommissionerControls({ initialWeeks }: { initialWeeks: Record<string, WeeklyModifier[]> }) {
   const [weeks, setWeeks] = useState(initialWeeks);

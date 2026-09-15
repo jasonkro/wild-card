@@ -16,7 +16,7 @@ const commissionerTasks = [
 ];
 
 const possibleModifiers = [
-  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A boost or penalty from -20% to +20% applies to every eligible player in that lineup position.'],
+  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A boost or penalty from -25% to -10%, or +10% to +25%, applies to every eligible player in that lineup position.'],
 ];
 
 export default function GuidePage() {
