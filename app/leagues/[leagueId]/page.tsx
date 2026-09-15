@@ -272,9 +272,15 @@ export default function LeaguePage() {
               </select>
             </div>
             {!dashboard.modifiersAvailable ? (
-              <p className="future-week-note">
-                Modifiers will be revealed when Week {dashboard.week} is active.
-              </p>
+              dashboard.week === dashboard.currentWeek || dashboard.week === dashboard.currentWeek + 1 ? (
+                <p className="future-week-note">
+                  Week {dashboard.week} modifiers will be revealed at 8:00 PM ET on Sunday.
+                </p>
+              ) : (
+                <p className="future-week-note">
+                  Modifiers will be revealed when Week {dashboard.week} is active.
+                </p>
+              )
             ) : (
               <div className="next-modifier-list">
                 {dashboard.modifiers.map((modifier) => (
@@ -292,13 +298,13 @@ export default function LeaguePage() {
                 ))}
               </div>
             )}
-            {dashboard.week === dashboard.currentWeek &&
-              dashboard.upcomingModifiersAvailable && (
-                <div className="upcoming-modifiers">
-                  <div className="upcoming-modifiers-heading">
-                    <span className="eyebrow">UP NEXT / WEEK {dashboard.upcomingWeek}</span>
-                    <span>REVEALED</span>
-                  </div>
+            {dashboard.week === dashboard.currentWeek && (
+              <div className="upcoming-modifiers">
+                <div className="upcoming-modifiers-heading">
+                  <span className="eyebrow">UP NEXT / WEEK {dashboard.upcomingWeek}</span>
+                  <span>{dashboard.upcomingModifiersAvailable ? "REVEALED" : "SUNDAY 8:00 PM ET"}</span>
+                </div>
+                {dashboard.upcomingModifiersAvailable ? (
                   <div className="next-modifier-list">
                     {dashboard.upcomingModifiers.map((modifier) => (
                       <div
@@ -314,8 +320,13 @@ export default function LeaguePage() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="future-week-note">
+                    Week {dashboard.upcomingWeek} modifiers will be revealed at 8:00 PM ET on Sunday.
+                  </p>
+                )}
+              </div>
+            )}
           </section>
           <section className="league-matchups">
             <div className="section-heading">

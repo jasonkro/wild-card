@@ -44,8 +44,8 @@ export function getModifierSchedule(now = new Date()) {
   const parts = easternScheduleParts(now);
   const weekday = parts.find((part) => part.type === 'weekday')?.value;
   const hour = Number(parts.find((part) => part.type === 'hour')?.value);
-  const sundayLockPassed = weekday === 'Sun' && hour >= 20 || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(weekday || '');
-  return { locked: sundayLockPassed, visibleToUsers: sundayLockPassed, timezone: modifierTimezone, lockTime: 'Sunday 8:00 PM ET', revealTime: 'Sunday 8:00 PM ET' };
+  const sundayRevealWindowOpen = weekday === 'Sun' && hour >= 20;
+  return { locked: !sundayRevealWindowOpen, visibleToUsers: sundayRevealWindowOpen, timezone: modifierTimezone, lockTime: 'Sunday 8:00 PM ET', revealTime: 'Sunday 8:00 PM ET' };
 }
 
 export function getWeeklyModifiers(_week: number): WeeklyModifier[] {
