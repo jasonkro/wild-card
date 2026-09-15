@@ -79,9 +79,10 @@
 .summary-label-short { display: none; }
 .player-table-row > div:first-child small { white-space: nowrap; }
 .player-meta { display: block; }
+.player-position { display: block; }
 .player-mobile-modifier { display: none; }
 .player-table-row > div:first-child { min-width: 0; }
-.player-table-row > div:first-child b { line-height: 1.15; min-height: 2.3em; max-height: 2.3em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.player-table-row > div:first-child b { line-height: 1.15; }
 .player-table-row > .player-modifier, .player-table-row > .score-stack { align-self: start; }
 
 
@@ -165,11 +166,13 @@ main { max-width: 1250px; margin: 0 auto; padding: 76px 5vw 90px; }.intro-sectio
 	.matchup-team-panel .player-table-head { font-size: 6px; }
 	.matchup-team-panel .player-table-row { font-size: 7px; }
 	.matchup-team-panel .player-table-row b { font-size: 8px; overflow-wrap: anywhere; }
+	.matchup-team-panel .player-table-row > div:first-child b { min-height: 2.3em; max-height: 2.3em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 	.matchup-team-panel .player-table-row small, .matchup-team-panel .player-modifier { font-size: 6px; }
 	.matchup-team-panel .player-table-head span:nth-child(2) { display: none; }
 	.matchup-team-panel .player-table-row > div:first-child { grid-column: 1; grid-row: 1 / span 2; }
 	.matchup-team-panel .player-table-row > .player-modifier { display: none; }
 	.matchup-team-panel .player-meta { display: flex; align-items: baseline; gap: 5px; }
+	.matchup-team-panel .player-position { display: none; }
 	.matchup-team-panel .player-mobile-modifier { display: inline; color: var(--muted); font: 6px "DM Mono", monospace; }
 	.matchup-team-panel .player-table-row > .score-stack { grid-column: 2; grid-row: 2; }
 	.matchup-team-panel .score-stack { min-width: 0; }

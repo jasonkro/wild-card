@@ -7,6 +7,10 @@ import { useEffect, useRef, useState } from "react";
 const storageKey = "wild-card-leagues";
 type SavedLeague = { id: string; name: string };
 
+function secondsToRefresh() {
+  return 60 - Math.floor((Date.now() % 60_000) / 1_000);
+}
+
 type Team = {
   name: string;
   matchupId: number;
@@ -103,10 +107,7 @@ export default function LeaguePage() {
       if (data.refreshedAt) {
         setLastUpdated(data.refreshedAt);
         setSecondsUntilRefresh(
-          Math.max(
-            0,
-            60 - Math.floor((Date.now() - Date.parse(data.refreshedAt)) / 1000),
-          ),
+            secondsToRefresh(),
         );
       }
       setLoading(false);
@@ -126,8 +127,15 @@ export default function LeaguePage() {
 
   useEffect(() => {
     loadDashboard();
-    const refreshTimer = window.setInterval(loadDashboard, 60_000);
-    return () => window.clearInterval(refreshTimer);
+    let refreshTimer: number | undefined;
+    const firstRefresh = window.setTimeout(() => {
+      loadDashboard();
+      refreshTimer = window.setInterval(loadDashboard, 60_000);
+    }, 60_000 - (Date.now() % 60_000));
+    return () => {
+      window.clearTimeout(firstRefresh);
+      if (refreshTimer) window.clearInterval(refreshTimer);
+    };
   }, [leagueId]);
 
   useEffect(() => {
@@ -135,10 +143,7 @@ export default function LeaguePage() {
     const timer = window.setInterval(
       () =>
         setSecondsUntilRefresh(
-          Math.max(
-            0,
-            60 - Math.floor((Date.now() - Date.parse(lastUpdated)) / 1000),
-          ),
+          secondsToRefresh(),
         ),
       1000,
     );

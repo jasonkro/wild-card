@@ -36,9 +36,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
   const { leagueId } = await params;
   if (!/^\d{6,}$/.test(leagueId)) return NextResponse.json({ error: 'Invalid league ID.' }, { status: 400 });
 
-  const isCurrentWeekRequest = !new URL(request.url).searchParams.has('week');
+  const requestedWeek = Number(new URL(request.url).searchParams.get('week'));
 
   try {
+    const refresh = await claimLeagueRefresh(leagueId, Number.isInteger(requestedWeek) ? requestedWeek : undefined);
+    if (!refresh.allowed && refresh.latestData && typeof refresh.latestData === 'object') {
+      return NextResponse.json(refresh.latestData as Record<string, unknown>, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+    }
     const base = 'https://api.sleeper.app/v1';
     const [leagueResponse, usersResponse, rostersResponse, stateResponse, playersResponse] = await Promise.all([
       fetch(`${base}/league/${leagueId}`, { next: { revalidate: 60 } }),
@@ -49,11 +53,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     ]);
 
     if (!leagueResponse.ok || !usersResponse.ok || !rostersResponse.ok || !stateResponse.ok || !playersResponse.ok) {
-      if (isCurrentWeekRequest) {
-        const refresh = await claimLeagueRefresh(leagueId);
-        if (refresh.latestData && typeof refresh.latestData === 'object') {
-          return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, sleepUnavailable: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
-        }
+      if (refresh.latestData && typeof refresh.latestData === 'object') {
+        return NextResponse.json({ ...refresh.latestData as Record<string, unknown>, sleepUnavailable: true, retryAfter: refresh.retryAfter }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
       }
       return NextResponse.json({ error: 'Sleeper data is unavailable right now.' }, { status: 502 });
     }
@@ -63,16 +64,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const rosters = await rostersResponse.json() as SleeperRoster[];
     const state = await stateResponse.json() as SleeperState;
     const players = await playersResponse.json() as Record<string, SleeperPlayer>;
-    const requestedWeek = Number(new URL(request.url).searchParams.get('week'));
     const currentWeek = state.week || state.display_week || 1;
     const week = Number.isInteger(requestedWeek) && requestedWeek >= 1 && requestedWeek <= 18 ? requestedWeek : currentWeek;
-    if (isCurrentWeekRequest) {
-      const refresh = await claimLeagueRefresh(leagueId);
-      if (!refresh.allowed) {
-        if (refresh.latestData && typeof refresh.latestData === 'object') return NextResponse.json(refresh.latestData as Record<string, unknown>, { status: 200, headers: { 'Cache-Control': 'no-store' } });
-        return NextResponse.json({}, { status: 304, headers: { 'Cache-Control': 'no-store' } });
-      }
-    }
     const nextWeekIsAvailable = getModifierSchedule().visibleToUsers;
     const canViewModifiers = week <= currentWeek || (week === currentWeek + 1 && nextWeekIsAvailable);
     const modifiers = canViewModifiers ? await getStoredModifiers(week) : [];
@@ -162,7 +155,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
 
     teams.sort((left, right) => left.matchupId - right.matchupId || left.rosterId - right.rosterId);
     const dashboard = { league: { id: leagueId, name: league.name || 'Unnamed league', season: league.season || state.season || 'Unknown' }, week, currentWeek, modifiersAvailable: canViewModifiers, upcomingWeek, upcomingModifiersAvailable: nextWeekIsAvailable, upcomingModifiers, refreshedAt: new Date().toISOString(), refreshIntervalSeconds: 60, modifiers, teams };
-    if (isCurrentWeekRequest) await saveLeagueRefreshData(leagueId, dashboard);
+    await saveLeagueRefreshData(leagueId, dashboard);
     return NextResponse.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (process.env.DATABASE_URL) {

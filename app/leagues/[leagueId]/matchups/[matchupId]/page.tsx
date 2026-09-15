@@ -33,6 +33,10 @@ type Modifier = {
   sign: number;
   percent: number;
 };
+
+function secondsToRefresh() {
+  return 60 - Math.floor((Date.now() % 60_000) / 1_000);
+}
 export default function MatchupPage() {
   const params = useParams<{ leagueId: string; matchupId: string }>();
   const searchParams = useSearchParams();
@@ -43,10 +47,12 @@ export default function MatchupPage() {
   const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(0);
 
   useEffect(() => {
     let active = true;
     async function loadMatchup() {
+      setLoading(true);
       try {
         const response = await fetch(`/api/leagues/${params.leagueId}/dashboard?week=${week}`, {
           cache: "no-store",
@@ -57,18 +63,40 @@ export default function MatchupPage() {
         setModifiers(data.modifiers || []);
         setTeams((data.teams || []).filter((team) => String(team.matchupId) === params.matchupId));
         setLastUpdated(data.refreshedAt || null);
+        if (data.refreshedAt) {
+          setSecondsUntilRefresh(
+            secondsToRefresh(),
+          );
+        }
       } finally {
         if (active) setLoading(false);
       }
     }
 
     void loadMatchup();
-    const refreshTimer = window.setInterval(loadMatchup, 60_000);
+    let refreshTimer: number | undefined;
+    const firstRefresh = window.setTimeout(() => {
+      loadMatchup();
+      refreshTimer = window.setInterval(loadMatchup, 60_000);
+    }, 60_000 - (Date.now() % 60_000));
     return () => {
       active = false;
-      window.clearInterval(refreshTimer);
+      window.clearTimeout(firstRefresh);
+      if (refreshTimer) window.clearInterval(refreshTimer);
     };
   }, [params.leagueId, params.matchupId, week]);
+
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const timer = window.setInterval(
+      () =>
+        setSecondsUntilRefresh(
+          secondsToRefresh(),
+        ),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [lastUpdated]);
 
   return (
     <main className="matchup-page">
@@ -85,11 +113,14 @@ export default function MatchupPage() {
           <span />
         </button>
         <span className="league-nav-name">{leagueName || "Loading league"}</span>
-        {lastUpdated && (
-          <span className="league-refresh-status">
-            <span className="live-dot" /> UPDATED
-          </span>
-        )}
+        <span className="league-refresh-status">
+          <span className="live-dot" />
+          {loading
+            ? "LOADING"
+            : lastUpdated
+              ? `UPDATED / ${secondsUntilRefresh}S`
+              : "UPDATING"}
+        </span>
       </div>
       {isMenuOpen && (
         <>
@@ -170,13 +201,11 @@ export default function MatchupPage() {
                     <div>
                       <b>{player.name}</b>
                       <div className="player-meta">
-                        {(!player.modifier.startsWith(`${player.slot} `) && player.slot !== "FLEX") && (
-                          <small>
-                            {player.position === player.slot
-                              ? player.position
-                              : `${player.position} / ${player.slot}`}
-                          </small>
-                        )}
+                        <small className="player-position">
+                          {player.position === player.slot
+                            ? player.position
+                            : `${player.position} / ${player.slot}`}
+                        </small>
                         {player.modifier !== "—" && (
                           <span className="player-mobile-modifier">
                             {player.slot === "FLEX" && player.modifier.startsWith("FLEX ")

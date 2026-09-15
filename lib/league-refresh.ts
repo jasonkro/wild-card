@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma';
 const refreshWindowMs = 60_000;
 const memoryRefreshes = new Map<string, number>();
 
-export async function claimLeagueRefresh(leagueId: string) {
+export async function claimLeagueRefresh(leagueId: string, week?: number) {
   const now = Date.now();
   const memoryLastFetched = memoryRefreshes.get(leagueId) || 0;
-  if (now - memoryLastFetched < refreshWindowMs) {
+  if (!process.env.DATABASE_URL && now - memoryLastFetched < refreshWindowMs) {
     return { allowed: false, retryAfter: Math.ceil((refreshWindowMs - (now - memoryLastFetched)) / 1000) };
   }
 
@@ -14,7 +14,16 @@ export async function claimLeagueRefresh(leagueId: string) {
     const existing = await prisma.leagueRefresh.findUnique({ where: { leagueId } });
     if (existing) {
       const elapsed = now - existing.lastFetchedAt.getTime();
-      if (elapsed < refreshWindowMs) {
+      const cachedWeek = existing.latestData && typeof existing.latestData === 'object' && 'week' in existing.latestData
+        ? Number((existing.latestData as { week?: number }).week)
+        : undefined;
+      const cachedCurrentWeek = existing.latestData && typeof existing.latestData === 'object' && 'currentWeek' in existing.latestData
+        ? Number((existing.latestData as { currentWeek?: number }).currentWeek)
+        : undefined;
+      const requestedDataMatches = week === undefined
+        ? cachedWeek !== undefined && cachedWeek === cachedCurrentWeek
+        : cachedWeek === week;
+      if (elapsed < refreshWindowMs && requestedDataMatches) {
         return { allowed: false, retryAfter: Math.ceil((refreshWindowMs - elapsed) / 1000), latestData: existing.latestData };
       }
     }
