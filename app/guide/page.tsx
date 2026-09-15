@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 const playerRules = [
   ['Draft and manage', 'Build and manage your roster in Sleeper as usual. Sleeper remains the official record for rosters, matchups, player stats, and final points.'],
-  ['Play the weekly twist', 'Each week has a published set of position and stat modifiers. The app applies those rules to the player performances pulled from Sleeper.'],
+  ['Play the weekly twist', 'Each week has a published set of three position modifiers. The app applies those rules to the player performances pulled from Sleeper.'],
   ['Check your matchup', 'Use the league dashboard for the live view and open a matchup to see the player-by-player score breakdown.'],
   ['Wait for final scores', 'Scores can change while Sleeper is still receiving game data. The audit is meaningful after the commissioner finalizes the week in Sleeper.'],
 ];
@@ -17,17 +17,11 @@ const commissionerTasks = [
 
 const possibleModifiers = [
   ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A boost or penalty from -20% to +20% applies to every eligible player in that lineup position.'],
-  ['STAT', 'PASS TD · RUSH TD · REC TD · INTERCEPTION · FUMBLE LOST', 'Touchdown events add 5% or 10%. Interceptions and fumbles lost subtract 5% or 10%.'],
 ];
 
 export default function GuidePage() {
   return (
     <main className="guide-page">
-      <div className="guide-top">
-        <Link className="back-link" href="/">← Back to league board</Link>
-        <Link className="guide-commissioner-link" href="/commissioner">Commissioner desk →</Link>
-      </div>
-
       <header className="guide-header">
         <div>
           <span className="eyebrow">THE WILD CARD LEAGUE PLAYBOOK</span>

@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { getWeeklyModifiers, normalizeWeeklyModifiers, WeeklyModifier } from '@/lib/modifiers';
+import { getRandomWeeklyModifiers, getWeeklyModifiers, normalizeWeeklyModifiers, WeeklyModifier } from '@/lib/modifiers';
 import { prisma } from '@/lib/prisma';
 
 const storePath = path.join(process.cwd(), 'data', 'modifiers.json');
@@ -44,4 +44,42 @@ export async function saveStoredModifiers(week: number, modifiers: WeeklyModifie
   await fs.mkdir(path.dirname(storePath), { recursive: true });
   await fs.writeFile(storePath, JSON.stringify(store, null, 2), 'utf8');
   return normalizedModifiers;
+}
+
+export async function getReleasedModifiers(week: number) {
+  if (process.env.DATABASE_URL) {
+    const existing = await prisma.weeklyModifierSet.findUnique({
+      where: { season_week: { season: 2026, week } },
+    });
+    if (existing) return normalizeWeeklyModifiers(existing.modifiers as unknown as WeeklyModifier[]);
+
+    const modifiers = normalizeWeeklyModifiers(getRandomWeeklyModifiers());
+    const now = new Date();
+    const revealAt = new Date(now);
+    try {
+      await prisma.weeklyModifierSet.create({
+        data: {
+          season: 2026,
+          week,
+          modifiers: JSON.parse(JSON.stringify(modifiers)),
+          lockedAt: now,
+          revealAt,
+        },
+      });
+    } catch {
+      // Another request may have released this week at the same time.
+    }
+    const released = await prisma.weeklyModifierSet.findUnique({
+      where: { season_week: { season: 2026, week } },
+    });
+    return normalizeWeeklyModifiers(released?.modifiers as unknown as WeeklyModifier[] || modifiers);
+  }
+
+  const store = await readStore();
+  if (store[String(week)]) return normalizeWeeklyModifiers(store[String(week)]);
+  const modifiers = normalizeWeeklyModifiers(getRandomWeeklyModifiers());
+  store[String(week)] = modifiers;
+  await fs.mkdir(path.dirname(storePath), { recursive: true });
+  await fs.writeFile(storePath, JSON.stringify(store, null, 2), 'utf8');
+  return modifiers;
 }

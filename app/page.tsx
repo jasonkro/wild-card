@@ -108,10 +108,15 @@ export default function Home() {
     }
   }
 
-  function removeLeague(id: string) {
-    const updated = savedLeagues.filter((league) => league.id !== id);
+  function removeLeague(league: SavedLeague) {
+    if (!window.confirm(`Remove ${league.name} from your saved leagues?`)) return;
+    const updated = savedLeagues.filter((savedLeague) => savedLeague.id !== league.id);
     localStorage.setItem(storageKey, JSON.stringify(updated));
     setSavedLeagues(updated);
+  }
+
+  function openLeague(id: string) {
+    router.push(`/leagues/${id}`);
   }
 
   return (
@@ -188,14 +193,32 @@ export default function Home() {
 
           <div className="saved-list">
             {savedLeagues.map((league) => (
-              <div className="saved-league" key={league.id}>
+              <div
+                className="saved-league"
+                key={league.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => openLeague(league.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openLeague(league.id);
+                  }
+                }}
+              >
                 <span>{league.name}</span>
-                <div>
-                  <Link href={`/leagues/${league.id}`}>Open league →</Link>
-                  <button type="button" onClick={() => removeLeague(league.id)} aria-label={`Remove league ${league.name}`}>
-                    Remove
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="remove-league-button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeLeague(league);
+                  }}
+                  aria-label={`Remove league ${league.name}`}
+                  title="Remove saved league"
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>

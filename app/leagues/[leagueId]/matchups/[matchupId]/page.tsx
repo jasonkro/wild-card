@@ -33,7 +33,6 @@ type Modifier = {
   sign: number;
   percent: number;
 };
-
 export default function MatchupPage() {
   const params = useParams<{ leagueId: string; matchupId: string }>();
   const searchParams = useSearchParams();
@@ -42,6 +41,8 @@ export default function MatchupPage() {
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [leagueName, setLeagueName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -51,10 +52,11 @@ export default function MatchupPage() {
           cache: "no-store",
         });
         if (!response.ok || !active) return;
-        const data = (await response.json()) as { league?: { name?: string }; modifiers?: Modifier[]; teams?: Team[] };
+        const data = (await response.json()) as { league?: { name?: string }; modifiers?: Modifier[]; teams?: Team[]; refreshedAt?: string };
         setLeagueName(data.league?.name || "Sleeper league");
         setModifiers(data.modifiers || []);
         setTeams((data.teams || []).filter((team) => String(team.matchupId) === params.matchupId));
+        setLastUpdated(data.refreshedAt || null);
       } finally {
         if (active) setLoading(false);
       }
@@ -70,54 +72,63 @@ export default function MatchupPage() {
 
   return (
     <main className="matchup-page">
-      <Link className="back-link" href="/">
-        ← Back to league board
-      </Link>
-      <div className="matchup-page-header">
-        <div>
-          <span className="eyebrow">
-            {leagueName || "SLEEPER LEAGUE"} / WEEK{" "}
-            {String(week).padStart(2, "0")}
+      <div className="league-nav-controls">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label="Open matchup menu"
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen(true)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <span className="league-nav-name">{leagueName || "Loading league"}</span>
+        {lastUpdated && (
+          <span className="league-refresh-status">
+            <span className="live-dot" /> UPDATED
           </span>
-          <h1>Matchup {params.matchupId}</h1>
-        </div>
-        <span className="status-pill dark-pill">AUDIT VIEW</span>
+        )}
+      </div>
+      {isMenuOpen && (
+        <>
+          <button className="drawer-backdrop" type="button" aria-label="Close matchup menu" onClick={() => setIsMenuOpen(false)} />
+          <aside className="league-drawer" aria-label="Matchup menu">
+            <div className="league-drawer-header">
+              <span className="eyebrow">MATCHUP MENU</span>
+              <button className="drawer-close" type="button" aria-label="Close matchup menu" onClick={() => setIsMenuOpen(false)}>×</button>
+            </div>
+            <Link href="/" onClick={() => setIsMenuOpen(false)}>SWITCH LEAGUES</Link>
+            <Link href={`/leagues/${params.leagueId}`} onClick={() => setIsMenuOpen(false)}>← BACK TO LEAGUE</Link>
+            <Link href={`/leagues/${params.leagueId}/verification?week=${week}`} onClick={() => setIsMenuOpen(false)}>VERIFY WEEK →</Link>
+            <a href={`https://sleeper.app/leagues/${params.leagueId}`} target="_blank" rel="noopener noreferrer" onClick={() => setIsMenuOpen(false)}>SLEEPER APP ↗</a>
+          </aside>
+        </>
+      )}
+      <div className="matchup-context-line">
+        ACTIVE RULES / WEEK {String(week).padStart(2, "0")}
       </div>
       {!loading && modifiers.length > 0 && (
-        <section className="matchup-modifiers">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">ACTIVE RULES</span>
-              <h2>Week {week} modifiers</h2>
-            </div>
-            <Link
-              className="text-button"
-              href={`/leagues/${params.leagueId}/verification?week=${week}`}
+        <div className="next-modifier-list matchup-modifiers-compact">
+          {modifiers.map((modifier) => (
+            <div
+              className="next-modifier"
+              style={{
+                background: "#e9e7df",
+                borderLeftColor: "var(--coral)",
+                color: "var(--ink)",
+              }}
+              key={modifier.label}
             >
-              Audit scores →
-            </Link>
-          </div>
-          <div className="next-modifier-list">
-            {modifiers.map((modifier) => (
-              <div
-                className="next-modifier"
-                style={{
-                  background: "#e9e7df",
-                  borderLeftColor: "var(--coral)",
-                  color: "var(--ink)",
-                }}
-                key={modifier.label}
-              >
-                <span>{modifier.label}</span>
-                <b style={{ color: "var(--ink)" }}>
-                  {modifier.sign > 0 ? "+" : "−"}
-                  {modifier.percent}%{" "}
-                  {modifier.kind === "position" ? modifier.target : "STAT"}
-                </b>
-              </div>
-            ))}
-          </div>
-        </section>
+              <span>{modifier.label}</span>
+              <b style={{ color: "var(--ink)" }}>
+                {modifier.sign > 0 ? "+" : "−"}
+                {modifier.percent}% {modifier.kind === "position" ? modifier.target : "STAT"}
+              </b>
+            </div>
+          ))}
+        </div>
       )}
       {loading && <p className="page-note">Loading matchup data...</p>}
       {!loading && teams.length === 0 && (
@@ -129,17 +140,16 @@ export default function MatchupPage() {
             <section className="matchup-team-panel" key={team.name}>
               <div className="panel-heading">
                 <div>
-                  <span className="eyebrow">TEAM</span>
-                  <h2>{team.name}</h2>
+                  <h2 title={team.name}>{team.name}</h2>
                       <small className="league-score-summary matchup-team-score">
                         <span>
-                          Actual {team.points.toFixed(1)} /{" "}
-                          <b>{team.adjustedPoints.toFixed(1)}</b>
+                          <span className="summary-label-full">Actual</span><span className="summary-label-short">Act.</span>{" "}<b className="team-total-actual">{team.points.toFixed(1)}</b> /{" "}
+                          <b className="team-total-adjusted">{team.adjustedPoints.toFixed(1)}</b>
                         </span>
                         <span>
-                          Projected {team.projectedBasePoints === null
+                          <span className="summary-label-full">Projected</span><span className="summary-label-short">Proj.</span>{" "}<span className="team-total-base">{team.projectedBasePoints === null
                             ? "—"
-                            : team.projectedBasePoints.toFixed(1)} /{" "}
+                            : team.projectedBasePoints.toFixed(1)}</span> /{" "}
                           <b>
                             {team.projectedPoints === null
                               ? "—"
@@ -148,7 +158,6 @@ export default function MatchupPage() {
                         </span>
                       </small>
                 </div>
-                <strong>{team.adjustedPoints.toFixed(1)}</strong>
               </div>
               <div className="player-table">
                 <div className="player-table-head">
@@ -160,21 +169,32 @@ export default function MatchupPage() {
                   <div className="player-table-row" key={player.id}>
                     <div>
                       <b>{player.name}</b>
-                      <small>
-                        {player.position === player.slot
-                          ? player.position
-                          : `${player.position} / ${player.slot}`}
-                      </small>
+                      <div className="player-meta">
+                        {(!player.modifier.startsWith(`${player.slot} `) && player.slot !== "FLEX") && (
+                          <small>
+                            {player.position === player.slot
+                              ? player.position
+                              : `${player.position} / ${player.slot}`}
+                          </small>
+                        )}
+                        {player.modifier !== "—" && (
+                          <span className="player-mobile-modifier">
+                            {player.slot === "FLEX" && player.modifier.startsWith("FLEX ")
+                              ? `FLEX/${player.position}${player.modifier.slice(4)}`
+                              : player.modifier}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="player-modifier">{player.modifier}</div>
                     <div className="score-stack">
                       <div className="score-line score-line-actual">
-                        <span>Actual {player.points.toFixed(1)} / </span>
+                        <span className="score-line-prefix"><span className="score-label-full">Actual</span><span className="score-label-short">Act.</span> {player.points.toFixed(1)} / </span>
                         <strong>{player.adjustedPoints.toFixed(1)}</strong>
                       </div>
                       <div className="score-line score-line-projection">
-                        <span>
-                          Projected{" "}
+                        <span className="score-line-prefix">
+                          <span className="score-label-full">Projected</span><span className="score-label-short">Proj.</span>{" "}
                           {player.projectedPoints === null
                             ? "—"
                             : player.projectedPoints.toFixed(1)}{" "}

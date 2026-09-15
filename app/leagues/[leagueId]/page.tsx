@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const storageKey = "wild-card-leagues";
+type SavedLeague = { id: string; name: string };
 
 type Team = {
   name: string;
@@ -50,7 +51,7 @@ export default function LeaguePage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const selectedWeekRef = useRef<number | null>(null);
 
   async function loadDashboard(isRetry = false, weekOverride?: number) {
@@ -98,6 +99,7 @@ export default function LeaguePage() {
       const data = (await response.json()) as Dashboard;
       setDashboard(data);
       selectedWeekRef.current = data.week;
+      saveLeague(data.league.name);
       if (data.refreshedAt) {
         setLastUpdated(data.refreshedAt);
         setSecondsUntilRefresh(
@@ -143,28 +145,16 @@ export default function LeaguePage() {
     return () => window.clearInterval(timer);
   }, [lastUpdated]);
 
-  useEffect(() => {
+  function saveLeague(name: string) {
     try {
-      const saved = JSON.parse(
-        localStorage.getItem(storageKey) || "[]",
-      ) as string[];
-      setIsSaved(saved.includes(leagueId));
-    } catch {
-      setIsSaved(false);
-    }
-  }, [leagueId]);
-
-  function addLeague() {
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem(storageKey) || "[]",
-      ) as string[];
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "[]") as (string | SavedLeague)[];
       const updated = [
-        leagueId,
-        ...saved.filter((id) => id !== leagueId),
+        { id: leagueId, name: name || leagueId },
+        ...saved
+          .map((league) => typeof league === "string" ? { id: league, name: league } : league)
+          .filter((league) => league.id !== leagueId),
       ].slice(0, 5);
       localStorage.setItem(storageKey, JSON.stringify(updated));
-      setIsSaved(true);
     } catch {
       // Handle error silently
     }
@@ -185,10 +175,70 @@ export default function LeaguePage() {
 
   return (
     <main className="league-page">
-      <Link className="back-link" href="/">
-        ← Back to leagues
-      </Link>
-      {loading && <p className="page-note">Loading league dashboard...</p>}
+      <div className="league-nav-controls">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label="Open league menu"
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen(true)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <span className="league-nav-name">
+          {dashboard?.league.name || "Loading league"}
+        </span>
+        <span className="league-refresh-status">
+          <span className="live-dot" />
+          {loading
+            ? "LOADING"
+            : lastUpdated
+              ? `UPDATED / ${secondsUntilRefresh}S`
+              : "UPDATING"}
+        </span>
+      </div>
+      {isMenuOpen && (
+        <>
+          <button
+            className="drawer-backdrop"
+            type="button"
+            aria-label="Close league menu"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          <aside className="league-drawer" aria-label="League menu">
+            <div className="league-drawer-header">
+              <span className="eyebrow">LEAGUE MENU</span>
+              <button
+                className="drawer-close"
+                type="button"
+                aria-label="Close league menu"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <Link href="/" onClick={() => setIsMenuOpen(false)}>
+              SWITCH LEAGUES
+            </Link>
+            <Link
+              href={`/leagues/${leagueId}/verification?week=${dashboard?.week || 1}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              VERIFY WEEK →
+            </Link>
+            <a
+              href={`https://sleeper.app/leagues/${leagueId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              SLEEPER APP ↗
+            </a>
+          </aside>
+        </>
+      )}
       {error && (
         <div className="error-state">
           <p>{error}</p>
@@ -197,86 +247,24 @@ export default function LeaguePage() {
       )}
       {dashboard && (
         <>
-          <div className="league-page-header">
-            <div>
-              <span className="eyebrow">
-                {dashboard.league.season} SLEEPER LEAGUE / WEEK{" "}
-                {String(dashboard.week).padStart(2, "0")}
-              </span>
-              <h1>{dashboard.league.name}</h1>
-            </div>
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <Link
-                className="status-pill dark-pill"
-                href={`/leagues/${leagueId}/verification?week=${dashboard.week}`}
-              >
-                VERIFY WEEK →
-              </Link>
-              <a
-                className="status-pill dark-pill"
-                href={`https://sleeper.app/leagues/${leagueId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                SLEEPER APP ↗
-              </a>
-              <button
-                onClick={addLeague}
-                className="status-pill"
-                style={{
-                  border: isSaved ? "1px solid #c9cec6" : "1px solid #d4ef52",
-                  background: isSaved ? "transparent" : "var(--lime)",
-                  color: isSaved ? "var(--ink)" : "var(--dark)",
-                  cursor: isSaved ? "default" : "pointer",
-                  opacity: isSaved ? 0.6 : 1,
-                }}
-                disabled={isSaved}
-              >
-                {isSaved ? "✓ SAVED" : "ADD LEAGUE"}
-              </button>
-            </div>
-          </div>
-          <div className="league-status">
-            <span>
-              <span className="live-dot" />{" "}
-              {lastUpdated
-                ? `UPDATED / NEXT IN ${secondsUntilRefresh}S`
-                : "WAITING FOR REFRESH"}
-            </span>
-            <span>
-              {dashboard.teams.length} TEAMS / {matchups.length} MATCHUPS
-            </span>
-          </div>
-          <div className="league-week-toolbar">
-            <label htmlFor="league-week">VIEW WEEK</label>
-            <select
-              id="league-week"
-              value={dashboard.week}
-              onChange={(event) => changeWeek(Number(event.target.value))}
-            >
-              {Array.from({ length: 18 }, (_, index) => index + 1).map((week) => (
-                <option key={week} value={week}>
-                  WEEK {String(week).padStart(2, "0")}
-                </option>
-              ))}
-            </select>
-          </div>
           <section className="league-modifiers">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">
-                  {!dashboard.modifiersAvailable
-                    ? "RULES LOCKED"
-                    : "ACTIVE RULES"}
-                </span>
-                <h2>Week {dashboard.week} modifiers</h2>
+                <span className="eyebrow">ACTIVE RULES</span>
               </div>
-              <Link
-                className="text-button"
-                href={`/leagues/${leagueId}/verification?week=${dashboard.week}`}
+              <select
+                className="league-week-select"
+                id="league-week"
+                aria-label="Select week"
+                value={dashboard.week}
+                onChange={(event) => changeWeek(Number(event.target.value))}
               >
-                Audit scores →
-              </Link>
+                {Array.from({ length: 18 }, (_, index) => index + 1).map((week) => (
+                  <option key={week} value={week}>
+                    WEEK {String(week).padStart(2, "0")}
+                  </option>
+                ))}
+              </select>
             </div>
             {!dashboard.modifiersAvailable ? (
               <p className="future-week-note">
@@ -285,16 +273,17 @@ export default function LeaguePage() {
             ) : (
               <div className="next-modifier-list">
                 {dashboard.modifiers.map((modifier) => (
-                  <div className="next-modifier" key={modifier.label}>
-                    <span>{modifier.label}</span>
-                    <strong>
-                      {modifier.kind === "stat" ? "STAT" : modifier.target}
-                    </strong>
-                    <b>
-                      {modifier.sign > 0 ? "+" : "−"}
-                      {modifier.percent}%
-                    </b>
-                  </div>
+                    <div
+                      className="next-modifier"
+                      style={{ background: "#e9e7df", borderLeftColor: "var(--coral)", color: "var(--ink)" }}
+                      key={modifier.label}
+                    >
+                      <span>{modifier.label}</span>
+                      <b style={{ color: "var(--ink)" }}>
+                        {modifier.sign > 0 ? "+" : "−"}
+                        {modifier.percent}% {modifier.kind === "position" ? modifier.target : "STAT"}
+                      </b>
+                    </div>
                 ))}
               </div>
             )}
@@ -307,14 +296,15 @@ export default function LeaguePage() {
                   </div>
                   <div className="next-modifier-list">
                     {dashboard.upcomingModifiers.map((modifier) => (
-                      <div className="next-modifier" key={modifier.label}>
+                      <div
+                        className="next-modifier"
+                        style={{ background: "#e9e7df", borderLeftColor: "var(--coral)", color: "var(--ink)" }}
+                        key={modifier.label}
+                      >
                         <span>{modifier.label}</span>
-                        <strong>
-                          {modifier.kind === "stat" ? "STAT" : modifier.target}
-                        </strong>
-                        <b>
+                        <b style={{ color: "var(--ink)" }}>
                           {modifier.sign > 0 ? "+" : "−"}
-                          {modifier.percent}%
+                          {modifier.percent}% {modifier.kind === "position" ? modifier.target : "STAT"}
                         </b>
                       </div>
                     ))}

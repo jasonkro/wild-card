@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getModifierSchedule, WeeklyModifier } from '@/lib/modifiers';
-import { getStoredModifiers } from '@/lib/modifier-store';
+import { getReleasedModifiers, getStoredModifiers } from '@/lib/modifier-store';
 import { claimLeagueRefresh, saveLeagueRefreshData } from '@/lib/league-refresh';
 import { prisma } from '@/lib/prisma';
-import { getEspnLiveStats } from '@/lib/espn-stats';
 
 type SleeperUser = { user_id: string; display_name?: string; metadata?: { team_name?: string } };
 type SleeperRoster = { roster_id: number; owner_id?: string; matchup_id?: number; points?: number; starters?: string[] };
@@ -30,7 +29,7 @@ function modifierDescription(modifiers: WeeklyModifier[], slot: string | undefin
     if (events === 0) return null;
     return `${modifier.sign > 0 ? '+' : '−'}${modifier.percent}% x${events} ${modifier.label}`;
   }).filter(Boolean);
-  return [positionModifier && `${positionModifier.sign > 0 ? '+' : '−'}${positionModifier.percent}% ${slot}`, ...statDescriptions].filter(Boolean).join(' / ') || '—';
+  return [positionModifier && `${slot} ${positionModifier.sign > 0 ? '+' : '−'}${positionModifier.percent}%`, ...statDescriptions].filter(Boolean).join(' / ') || '—';
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ leagueId: string }> }) {
@@ -78,7 +77,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const canViewModifiers = week <= currentWeek || (week === currentWeek + 1 && nextWeekIsAvailable);
     const modifiers = canViewModifiers ? await getStoredModifiers(week) : [];
     const upcomingWeek = currentWeek + 1;
-    const upcomingModifiers = nextWeekIsAvailable ? await getStoredModifiers(upcomingWeek) : [];
+    const upcomingModifiers = nextWeekIsAvailable ? await getReleasedModifiers(upcomingWeek) : [];
     const projectionResponse = await fetch(`${base}/projections/nfl/regular/${league.season || state.season || '2026'}/${week}`, { cache: 'no-store' });
     const projections = projectionResponse.ok ? await projectionResponse.json() as Record<string, SleeperProjection> : {};
     const freeAgentsResponse = await fetch(`${base}/league/${leagueId}/free_agents/nfl?week=${week}`, { cache: 'no-store' });
@@ -91,8 +90,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     });
     const statsResponse = await fetch(`${base}/stats/nfl/${league.season || state.season || '2026'}/${week}`, { cache: 'no-store' });
     const sleeperStats = statsResponse.ok ? await statsResponse.json() as Record<string, SleeperStats> : {};
-    const espnStats = await getEspnLiveStats(league.season || state.season || '2026', week, players);
-    const statsForPlayer = (playerId: string) => ({ ...sleeperStats[playerId], ...espnStats[playerId] });
+    const statsForPlayer = (playerId: string) => sleeperStats[playerId];
     const matchupsResponse = await fetch(`${base}/league/${leagueId}/matchups/${week}`, { next: { revalidate: 30 } });
     const matchups = matchupsResponse.ok ? await matchupsResponse.json() as SleeperMatchup[] : [];
     const usersById = new Map(users.map((user) => [user.user_id, user]));
