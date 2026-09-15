@@ -3,6 +3,7 @@ import { getModifierSchedule, WeeklyModifier } from '@/lib/modifiers';
 import { getReleasedModifiers, getStoredModifiers } from '@/lib/modifier-store';
 import { claimLeagueRefresh, saveLeagueRefreshData } from '@/lib/league-refresh';
 import { prisma } from '@/lib/prisma';
+import { getEspnLiveStats } from '@/lib/espn-stats';
 
 type SleeperUser = { user_id: string; display_name?: string; metadata?: { team_name?: string } };
 type SleeperRoster = { roster_id: number; owner_id?: string; matchup_id?: number; points?: number; starters?: string[] };
@@ -83,7 +84,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     });
     const statsResponse = await fetch(`${base}/stats/nfl/${league.season || state.season || '2026'}/${week}`, { cache: 'no-store' });
     const sleeperStats = statsResponse.ok ? await statsResponse.json() as Record<string, SleeperStats> : {};
-    const statsForPlayer = (playerId: string) => sleeperStats[playerId];
+    const espnStats = await getEspnLiveStats(league.season || state.season || '2026', week, players);
+    const statsForPlayer = (playerId: string) => ({ ...sleeperStats[playerId], ...espnStats[playerId] });
     const matchupsResponse = await fetch(`${base}/league/${leagueId}/matchups/${week}`, { next: { revalidate: 30 } });
     const matchups = matchupsResponse.ok ? await matchupsResponse.json() as SleeperMatchup[] : [];
     const usersById = new Map(users.map((user) => [user.user_id, user]));
