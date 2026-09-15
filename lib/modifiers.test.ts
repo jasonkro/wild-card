@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getModifierSchedule } from './modifiers.ts';
+import { getModifierSchedule } from './modifiers';
 
 test('next week modifiers stay hidden before Sunday 8pm ET', () => {
   const beforeReveal = new Date('2026-09-14T18:00:00-04:00');
