@@ -16,13 +16,15 @@ export default function Home() {
   const [message, setMessage] = useState('Enter a Sleeper league ID to start tracking your league.');
   const [isConnecting, setIsConnecting] = useState(false);
 
+  const [currentWeek, setCurrentWeek] = useState(1);
   const [currentModifiers, setCurrentModifiers] = useState<WeeklyModifier[]>(() => getWeeklyModifiers(1));
   const schedule = useMemo(() => getModifierSchedule(), []);
 
   useEffect(() => {
-    fetch('/api/modifiers?week=1')
-      .then((response) => response.ok ? response.json() as Promise<{ modifiers?: WeeklyModifier[] }> : null)
+    fetch('/api/modifiers')
+      .then((response) => response.ok ? response.json() as Promise<{ week?: number; modifiers?: WeeklyModifier[] }> : null)
       .then((result) => {
+        if (result?.week) setCurrentWeek(result.week);
         if (result?.modifiers) setCurrentModifiers(result.modifiers);
       })
       .catch(() => undefined);
@@ -123,7 +125,7 @@ export default function Home() {
     <main className="home-page">
       <header className="topbar">
         <div className="wordmark">WILD CARD LEAGUE</div>
-        <div className="season-chip">CURRENT RULES / WEEK 01</div>
+        <div className="season-chip">CURRENT RULES / WEEK {String(currentWeek).padStart(2, '0')}</div>
         <div className="topbar-right">
           <Link className="guide-nav-link" href="/guide">How it works</Link>
         </div>
