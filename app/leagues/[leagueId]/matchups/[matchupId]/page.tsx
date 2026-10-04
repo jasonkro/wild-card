@@ -156,7 +156,7 @@ export default function MatchupPage() {
               <span>{modifier.label}</span>
               <b style={{ color: "var(--ink)" }}>
                 {modifier.sign > 0 ? "+" : "−"}
-                {modifier.percent}% {modifier.kind === "position" ? modifier.target : modifier.stats?.[0] === "rec_td" ? "REC TD" : modifier.stats?.[0]?.replace("_", " ").toUpperCase() || "STAT"}
+                {modifier.percent}% {modifier.kind === "position" || modifier.kind === "slot" ? modifier.target : modifier.stats?.[0] === "rec_td" ? "REC TD" : modifier.stats?.[0]?.replace("_", " ").toUpperCase() || "STAT"}
               </b>
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getModifierSchedule, WeeklyModifier } from '@/lib/modifiers';
-import { getReleasedModifiers, getStoredModifiers } from '@/lib/modifier-store';
+import { formatSlotModifierTarget, getLineupSlotTarget, getModifierSchedule, getPositionModifierFactor, SlotTarget, WeeklyModifier } from '@/lib/modifiers';
+import { getReleasedModifiers, getStoredModifiers, isModifierWeekReleased } from '@/lib/modifier-store';
 import { claimLeagueRefresh, saveLeagueRefreshData } from '@/lib/league-refresh';
 import { prisma } from '@/lib/prisma';
 import { getEspnLiveStats } from '@/lib/espn-stats';
@@ -13,9 +13,8 @@ type SleeperPlayer = { full_name?: string; first_name?: string; last_name?: stri
 type SleeperProjection = { pts_ppr?: number; pts_half_ppr?: number; pts_std?: number };
 type SleeperFreeAgent = { player_id?: string; projected_stats?: SleeperProjection };
 type SleeperStats = { pass_td?: number; rush_td?: number; rec_td?: number; return_td?: number; int?: number; fum_lost?: number };
-function modifierFactor(modifiers: WeeklyModifier[], slot: string | undefined, stats: SleeperStats | undefined) {
-  const positionModifier = modifiers.find((item) => item.kind === 'position' && item.target === slot);
-  const positionFactor = positionModifier ? positionModifier.sign * positionModifier.percent / 100 : 0;
+function modifierFactor(modifiers: WeeklyModifier[], slot: string | undefined, slotTarget: ReturnType<typeof getLineupSlotTarget>, stats: SleeperStats | undefined) {
+  const positionFactor = getPositionModifierFactor(modifiers, slot, slotTarget);
   const statFactor = modifiers.filter((item) => item.kind === 'stat' && item.stats).reduce((total, modifier) => {
     const events = modifier.stats?.reduce((count, stat) => count + (stats?.[stat] || 0), 0) || 0;
     return total + events * modifier.sign * modifier.percent / 100;
@@ -23,14 +22,22 @@ function modifierFactor(modifiers: WeeklyModifier[], slot: string | undefined, s
   return positionFactor + statFactor;
 }
 
-function modifierDescription(modifiers: WeeklyModifier[], slot: string | undefined, stats: SleeperStats | undefined) {
-  const positionModifier = modifiers.find((item) => item.kind === 'position' && item.target === slot);
+function modifierDescription(modifiers: WeeklyModifier[], slot: string | undefined, slotTarget: ReturnType<typeof getLineupSlotTarget>, rosterPositions: string[], stats: SleeperStats | undefined) {
+  const positionDescriptions = modifiers.filter((item) =>
+    (item.kind === 'position' && item.target === slot)
+    || (item.kind === 'slot' && item.target === slotTarget),
+  ).map((modifier) => {
+    const target = modifier.kind === 'slot' && modifier.target
+      ? formatSlotModifierTarget(modifier.target as SlotTarget, rosterPositions)
+      : modifier.target;
+    return `${target} ${modifier.sign > 0 ? '+' : '−'}${modifier.percent}%`;
+  });
   const statDescriptions = modifiers.filter((item) => item.kind === 'stat' && item.stats).map((modifier) => {
     const events = modifier.stats?.reduce((count, stat) => count + (stats?.[stat] || 0), 0) || 0;
     if (events === 0) return null;
     return `${modifier.sign > 0 ? '+' : '−'}${modifier.percent}% x${events} ${modifier.label}`;
   }).filter(Boolean);
-  return [positionModifier && `${slot} ${positionModifier.sign > 0 ? '+' : '−'}${positionModifier.percent}%`, ...statDescriptions].filter(Boolean).join(' / ') || '—';
+  return [...positionDescriptions, ...statDescriptions].filter(Boolean).join(' / ') || '—';
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ leagueId: string }> }) {
@@ -66,11 +73,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     const state = await stateResponse.json() as SleeperState;
     const players = await playersResponse.json() as Record<string, SleeperPlayer>;
     const currentWeek = state.week || state.display_week || 1;
+    const rosterPositions = league.roster_positions || [];
     const week = Number.isInteger(requestedWeek) && requestedWeek >= 1 && requestedWeek <= 18 ? requestedWeek : currentWeek;
-    const nextWeekIsAvailable = getModifierSchedule().visibleToUsers;
+    const upcomingWeek = currentWeek + 1;
+    const scheduleIsOpen = getModifierSchedule().visibleToUsers;
+    const nextWeekIsAvailable = scheduleIsOpen || await isModifierWeekReleased(upcomingWeek);
     const canViewModifiers = week <= currentWeek || (week === currentWeek + 1 && nextWeekIsAvailable);
     const modifiers = canViewModifiers ? await getStoredModifiers(week) : [];
-    const upcomingWeek = currentWeek + 1;
     const upcomingModifiers = nextWeekIsAvailable ? await getReleasedModifiers(upcomingWeek) : [];
     const projectionResponse = await fetch(`${base}/projections/nfl/regular/${league.season || state.season || '2026'}/${week}`, { cache: 'no-store' });
     const projections = projectionResponse.ok ? await projectionResponse.json() as Record<string, SleeperProjection> : {};
@@ -98,8 +107,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         const projection = projectionsByPlayer[playerId];
         const projectedPoints = projection?.pts_ppr ?? projection?.pts_half_ppr ?? projection?.pts_std;
         if (typeof projectedPoints !== 'number') return null;
-        const slot = league.roster_positions?.[index] || 'FLEX';
-        return projectedPoints * (1 + modifierFactor(modifiers, slot, statsForPlayer(playerId)));
+        const slot = rosterPositions[index] || 'FLEX';
+        const slotTarget = getLineupSlotTarget(rosterPositions, index);
+        return projectedPoints * (1 + modifierFactor(modifiers, slot, slotTarget, statsForPlayer(playerId)));
       });
       const projectedTotal = projectedValues.some((points) => points !== null) ? projectedValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
       const projectedBaseValues = (matchup.starters || []).map((playerId) => {
@@ -109,8 +119,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
       });
       const projectedBaseTotal = projectedBaseValues.some((points) => points !== null) ? projectedBaseValues.reduce<number>((total, points) => total + (points ?? 0), 0) : null;
       const adjustedPoints = Number((matchup.starters_points || []).reduce((total, points, index) => {
-          const slot = league.roster_positions?.[index] || 'FLEX';
-        return total + points * (1 + modifierFactor(modifiers, slot, statsForPlayer(matchup.starters?.[index] || '')));
+          const slot = rosterPositions[index] || 'FLEX';
+          const slotTarget = getLineupSlotTarget(rosterPositions, index);
+        return total + points * (1 + modifierFactor(modifiers, slot, slotTarget, statsForPlayer(matchup.starters?.[index] || '')));
       }, 0).toFixed(2));
       const sleeperFinalPoints = typeof matchup.custom_points === 'number' ? Number(matchup.custom_points.toFixed(2)) : null;
       const difference = sleeperFinalPoints === null ? null : Number((sleeperFinalPoints - adjustedPoints).toFixed(2));
@@ -126,25 +137,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
         projectedBasePoints: projectedBaseTotal === null ? null : Number(projectedBaseTotal.toFixed(2)),
         projectedPoints: projectedTotal === null ? null : Number(projectedTotal.toFixed(2)),
         adjustment: Number((matchup.starters_points || []).reduce((total, points, index) => {
-           const slot = league.roster_positions?.[index] || 'FLEX';
-          return total + points * modifierFactor(modifiers, slot, statsForPlayer(matchup.starters?.[index] || ''));
+           const slot = rosterPositions[index] || 'FLEX';
+          const slotTarget = getLineupSlotTarget(rosterPositions, index);
+          return total + points * modifierFactor(modifiers, slot, slotTarget, statsForPlayer(matchup.starters?.[index] || ''));
         }, 0).toFixed(2)),
         playerBreakdown: (matchup.starters || []).flatMap((playerId, index) => {
           if (playerId === '0') return [];
           const points = matchup.starters_points?.[index] || 0;
-          const slot = league.roster_positions?.[index] || 'FLEX';
+          const slot = rosterPositions[index] || 'FLEX';
+          const slotTarget = getLineupSlotTarget(rosterPositions, index);
           const playerStats = statsForPlayer(playerId);
           const player = players[playerId];
           const projectedPoints = projectionsByPlayer[playerId]?.pts_ppr ?? projectionsByPlayer[playerId]?.pts_half_ppr ?? projectionsByPlayer[playerId]?.pts_std;
-          const projectionFactor = modifierFactor(modifiers, slot, playerStats);
-          const adjustment = points * modifierFactor(modifiers, slot, playerStats);
+          const projectionFactor = modifierFactor(modifiers, slot, slotTarget, playerStats);
+          const adjustment = points * modifierFactor(modifiers, slot, slotTarget, playerStats);
           return [{
             id: playerId,
             name: player?.full_name || [player?.first_name, player?.last_name].filter(Boolean).join(' ') || `Player ${playerId}`,
             position: player?.position || '—',
             slot,
             points: Number(points.toFixed(2)),
-            modifier: modifierDescription(modifiers, slot, playerStats),
+            modifier: modifierDescription(modifiers, slot, slotTarget, rosterPositions, playerStats),
             adjustment: Number(adjustment.toFixed(2)),
             adjustedPoints: Number((points + adjustment).toFixed(2)),
             projectedPoints: typeof projectedPoints === 'number' ? Number(projectedPoints.toFixed(2)) : null,
@@ -156,7 +169,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ leag
     });
 
     teams.sort((left, right) => left.matchupId - right.matchupId || left.rosterId - right.rosterId);
-    const dashboard = { league: { id: leagueId, name: league.name || 'Unnamed league', season: league.season || state.season || 'Unknown' }, week, currentWeek, modifiersAvailable: canViewModifiers, upcomingWeek, upcomingModifiersAvailable: nextWeekIsAvailable, upcomingModifiers, refreshedAt: new Date().toISOString(), refreshIntervalSeconds: 60, modifiers, teams };
+    const displayModifiers = (items: WeeklyModifier[]) => items.map((modifier) =>
+      modifier.kind === 'slot' && modifier.target
+        ? { ...modifier, target: formatSlotModifierTarget(modifier.target as SlotTarget, rosterPositions) }
+        : modifier,
+    );
+    const dashboard = { league: { id: leagueId, name: league.name || 'Unnamed league', season: league.season || state.season || 'Unknown' }, week, currentWeek, modifiersAvailable: canViewModifiers, upcomingWeek, upcomingModifiersAvailable: nextWeekIsAvailable, upcomingModifiers: displayModifiers(upcomingModifiers), refreshedAt: new Date().toISOString(), refreshIntervalSeconds: 60, modifiers: displayModifiers(modifiers), teams };
     await saveLeagueRefreshData(leagueId, dashboard);
     return NextResponse.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

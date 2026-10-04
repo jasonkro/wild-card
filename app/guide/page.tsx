@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 const playerRules = [
   ['Draft and manage', 'Build and manage your roster in Sleeper as usual. Sleeper remains the official record for rosters, matchups, player stats, and final points.'],
-  ['Play the weekly twist', 'Each week has a published set of three position modifiers. The app applies those rules to the player performances pulled from Sleeper.'],
+  ['Play the weekly twist', 'Each week has a published set of three modifiers. A rule can affect a whole position, one first lineup slot, or a scoring event.'],
   ['Check your matchup', 'Use the league dashboard for the live view and open a matchup to see the player-by-player score breakdown.'],
   ['Wait for final scores', 'Scores can change while Sleeper is still receiving game data. The audit is meaningful after the commissioner finalizes the week in Sleeper.'],
 ];
@@ -16,7 +16,8 @@ const commissionerTasks = [
 ];
 
 const possibleModifiers = [
-  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A boost or penalty from -25% to -10%, or +10% to +25%, applies to every eligible player in that lineup position.'],
+  ['POSITION', 'QB · RB · WR · TE · FLEX · K · DEF', 'A boost or penalty from -50% to +100% applies to every eligible player in that lineup position.'],
+  ['SINGLE SLOT', 'QB1 · RB1 · WR1 · TE1 · FLEX1 · K1 · DEF1', 'A boost or penalty from -50% to +100% applies only to the first lineup slot of that type.'],
 ];
 
 export default function GuidePage() {

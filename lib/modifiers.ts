@@ -1,12 +1,17 @@
+export const positionTargets = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'] as const;
+export const slotTargets = ['QB1', 'RB1', 'WR1', 'TE1', 'FLEX1', 'K1', 'DEF1'] as const;
+export type PositionTarget = typeof positionTargets[number];
+export type SlotTarget = typeof slotTargets[number];
+export type ModifierTarget = PositionTarget | SlotTarget;
+
 export type WeeklyModifier = {
-  kind: 'position' | 'stat';
-  target?: 'QB' | 'RB' | 'WR' | 'TE' | 'FLEX' | 'K' | 'DEF';
+  kind: 'position' | 'slot' | 'stat';
+  target?: ModifierTarget;
   label: string;
   sign: 1 | -1;
-  percent: 5 | 10 | 15 | 20 | 25;
+  percent: number;
   stats?: ('pass_td' | 'rush_td' | 'rec_td' | 'int' | 'fum_lost')[];
 };
-type PositionTarget = NonNullable<WeeklyModifier['target']>;
 
 const positionLabels: Record<PositionTarget, { positive: string; negative: string }> = {
   QB: { positive: 'AIR RAID', negative: 'AIR POCKET' },
@@ -18,14 +23,71 @@ const positionLabels: Record<PositionTarget, { positive: string; negative: strin
   DEF: { positive: 'LOCKDOWN', negative: 'SOFT COVERAGE' },
 };
 
-export function getPositionModifierLabel(target: PositionTarget, sign: 1 | -1) {
-  return positionLabels[target][sign > 0 ? 'positive' : 'negative'];
+function getBasePosition(target: ModifierTarget): PositionTarget {
+  return (target.endsWith('1') ? target.slice(0, -1) : target) as PositionTarget;
+}
+
+export function getPositionModifierLabel(target: ModifierTarget, sign: 1 | -1) {
+  return positionLabels[getBasePosition(target)][sign > 0 ? 'positive' : 'negative'];
 }
 
 export function normalizeWeeklyModifiers(modifiers: WeeklyModifier[]) {
-  return modifiers.map((modifier) => modifier.kind === 'position' && modifier.target
+  return modifiers.map((modifier) => (modifier.kind === 'position' || modifier.kind === 'slot') && modifier.target
     ? { ...modifier, label: getPositionModifierLabel(modifier.target, modifier.sign) }
     : { ...modifier });
+}
+
+export function getLineupSlotTarget(rosterPositions: string[], index: number): SlotTarget | undefined {
+  const position = rosterPositions[index] as PositionTarget | undefined;
+  if (!position || !positionTargets.includes(position)) return undefined;
+  if (rosterPositions.slice(0, index).includes(position)) return undefined;
+  return `${position}1` as SlotTarget;
+}
+
+export function formatSlotModifierTarget(target: SlotTarget, rosterPositions: string[]) {
+  const position = getBasePosition(target);
+  const slotCount = rosterPositions.filter((slot) => slot === position).length;
+  return slotCount > 1 ? target : position;
+}
+
+export function getPositionModifierFactor(modifiers: WeeklyModifier[], position: string | undefined, slotTarget: SlotTarget | undefined) {
+  return modifiers.filter((modifier) =>
+    (modifier.kind === 'position' && modifier.target === position)
+    || (modifier.kind === 'slot' && modifier.target === slotTarget),
+  ).reduce((total, modifier) => total + modifier.sign * modifier.percent / 100, 0);
+}
+
+function generateWeeklyModifierSet(random: () => number): WeeklyModifier[] {
+  const firstTarget = slotTargets[Math.floor(random() * slotTargets.length)];
+  const firstPosition = getBasePosition(firstTarget);
+  const selectedPositions = positionTargets.filter((position) =>
+    position !== firstPosition && (!(firstPosition === 'K' || firstPosition === 'DEF') || (position !== 'K' && position !== 'DEF')),
+  );
+
+  for (let index = selectedPositions.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [selectedPositions[index], selectedPositions[swapIndex]] = [selectedPositions[swapIndex], selectedPositions[index]];
+  }
+
+  const positionGroupTargets: PositionTarget[] = [];
+  for (const position of selectedPositions) {
+    const isSpecialTeams = position === 'K' || position === 'DEF';
+    const alreadyHasOtherSpecialTeam = positionGroupTargets.some((target) =>
+      (target === 'K' || target === 'DEF') && target !== position,
+    );
+    if (isSpecialTeams && alreadyHasOtherSpecialTeam) continue;
+    positionGroupTargets.push(position);
+    if (positionGroupTargets.length === 2) break;
+  }
+
+  return [
+    { kind: 'slot', target: firstTarget, label: getPositionModifierLabel(firstTarget, 1), sign: 1, percent: 100 },
+    ...positionGroupTargets.map((target, index) => {
+      const sign = index === 0 ? 1 as const : -1 as const;
+      const percent = 50;
+      return { kind: 'position' as const, target, label: getPositionModifierLabel(target, sign), sign, percent };
+    }),
+  ];
 }
 
 const weekOneModifiers: WeeklyModifier[] = [
@@ -61,35 +123,9 @@ export function getWeeklyModifiers(_week: number): WeeklyModifier[] {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  const targets: PositionTarget[] = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
-  const selected: PositionTarget[] = [];
-  while (selected.length < 3) {
-    const target = targets[Math.floor(nextRandom() * targets.length)];
-    if (!selected.includes(target)) selected.push(target);
-  }
-  const percentages: WeeklyModifier['percent'][] = [10, 15, 20, 25];
-  return selected.map((target) => {
-    const sign = nextRandom() > 0.5 ? 1 : -1;
-    return { kind: 'position', target, label: getPositionModifierLabel(target, sign), sign, percent: percentages[Math.floor(nextRandom() * percentages.length)] };
-  });
+  return generateWeeklyModifierSet(nextRandom);
 }
 
 export function getRandomWeeklyModifiers(): WeeklyModifier[] {
-  const targets: PositionTarget[] = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
-  const selected: PositionTarget[] = [];
-  while (selected.length < 3) {
-    const target = targets[Math.floor(Math.random() * targets.length)];
-    if (!selected.includes(target)) selected.push(target);
-  }
-  const positionPercentages: WeeklyModifier['percent'][] = [10, 15, 20, 25];
-  return selected.map((target) => {
-    const sign = Math.random() > 0.5 ? 1 : -1;
-    return {
-      kind: 'position',
-      target,
-      label: getPositionModifierLabel(target, sign),
-      sign,
-      percent: positionPercentages[Math.floor(Math.random() * positionPercentages.length)],
-    };
-  });
+  return generateWeeklyModifierSet(Math.random);
 }

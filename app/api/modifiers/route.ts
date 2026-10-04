@@ -1,5 +1,5 @@
 import { getModifierSchedule } from '@/lib/modifiers';
-import { getReleasedModifiers, getStoredModifiers } from '@/lib/modifier-store';
+import { getReleasedModifiers, getStoredModifiers, isModifierWeekReleased } from '@/lib/modifier-store';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -13,11 +13,13 @@ export async function GET(request: Request) {
   const state = stateResponse.ok ? await stateResponse.json() as { week?: number; display_week?: number } : {};
   const currentWeek = state.week || state.display_week || 1;
   const week = parsedWeek ?? currentWeek;
-  const nextWeekIsAvailable = getModifierSchedule().visibleToUsers;
+  const isNextWeek = week === currentWeek + 1;
+  const scheduleIsOpen = getModifierSchedule().visibleToUsers;
+  const nextWeekIsAvailable = isNextWeek && (scheduleIsOpen || await isModifierWeekReleased(week));
   const modifiersAvailable = week <= currentWeek || (week === currentWeek + 1 && nextWeekIsAvailable);
 
   const modifiers = modifiersAvailable
-    ? week === currentWeek + 1 && nextWeekIsAvailable
+    ? isNextWeek && scheduleIsOpen
       ? await getReleasedModifiers(week)
       : await getStoredModifiers(week)
     : [];

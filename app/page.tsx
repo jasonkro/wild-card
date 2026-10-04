@@ -168,7 +168,7 @@ export default function Home() {
           {currentModifiers.map((modifier) => (
             <div className="next-modifier" style={{ background: '#e9e7df', borderLeftColor: 'var(--coral)', color: 'var(--ink)' }} key={`${modifier.label}-${modifier.target ?? 'stat'}`}>
               <span>{modifier.label}</span>
-              <b style={{ color: 'var(--ink)' }}>{modifier.sign > 0 ? '+' : '−'}{modifier.percent}% {modifier.kind === 'position' ? modifier.target : modifier.stats?.[0]?.replace('_', ' ').toUpperCase() || 'STAT'}</b>
+              <b style={{ color: 'var(--ink)' }}>{modifier.sign > 0 ? '+' : '−'}{modifier.percent}% {modifier.kind === 'position' || modifier.kind === 'slot' ? modifier.target : modifier.stats?.[0]?.replace('_', ' ').toUpperCase() || 'STAT'}</b>
             </div>
           ))}
         </div>
