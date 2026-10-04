@@ -56,6 +56,7 @@ test('randomized modifier sets start with a +100% single slot and obey group exc
     assert.equal(first.sign, 1);
     assert.equal(first.percent, 100);
     assert.ok(first.target?.endsWith('1'));
+    assert.ok(first.target !== 'K1' && first.target !== 'DEF1');
 
     const firstPosition = first.target?.slice(0, -1) as WeeklyModifier['target'];
     const groupTargets = modifiers.slice(1).map((modifier) => modifier.target);

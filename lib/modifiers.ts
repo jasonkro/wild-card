@@ -58,7 +58,8 @@ export function getPositionModifierFactor(modifiers: WeeklyModifier[], position:
 }
 
 function generateWeeklyModifierSet(random: () => number): WeeklyModifier[] {
-  const firstTarget = slotTargets[Math.floor(random() * slotTargets.length)];
+  const firstSlotTargets = slotTargets.filter((target) => target !== 'K1' && target !== 'DEF1');
+  const firstTarget = firstSlotTargets[Math.floor(random() * firstSlotTargets.length)];
   const firstPosition = getBasePosition(firstTarget);
   const selectedPositions = positionTargets.filter((position) =>
     position !== firstPosition && (!(firstPosition === 'K' || firstPosition === 'DEF') || (position !== 'K' && position !== 'DEF')),

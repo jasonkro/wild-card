@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { getModifierSchedule, getRandomWeeklyModifiers, positionTargets, slotTargets, WeeklyModifier } from '@/lib/modifiers';
-import { getStoredModifiers, saveStoredModifiers } from '@/lib/modifier-store';
+import { clearStoredModifiersFromWeek, getStoredModifiers, saveStoredModifiers } from '@/lib/modifier-store';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -13,6 +13,17 @@ export async function POST(request: Request) {
   if (!(await auth())?.user) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
 
   const body = await request.json() as { action?: string; week?: number; modifiers?: unknown };
+  if (body.action === 'clear-from-week') {
+    const week = Number(body.week);
+    if (!Number.isInteger(week) || week < 1 || week > 18) return NextResponse.json({ error: 'Week must be between 1 and 18.' }, { status: 400 });
+    try {
+      await clearStoredModifiersFromWeek(week);
+      return NextResponse.json({ clearedFromWeek: week, clearedThroughWeek: 18, clearedWeeks: 19 - week, saved: true, storage: process.env.DATABASE_URL ? 'database' : 'local' });
+    } catch (error) {
+      console.error('Modifier clearing failed:', error);
+      return NextResponse.json({ error: 'Could not clear modifiers in the configured storage.' }, { status: 503 });
+    }
+  }
   if (body.action === 'randomize') {
     try {
       const week = body.week || 2;

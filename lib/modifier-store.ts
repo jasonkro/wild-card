@@ -68,6 +68,12 @@ export async function saveStoredModifiers(week: number, modifiers: WeeklyModifie
   return normalizedModifiers;
 }
 
+export async function clearStoredModifiersFromWeek(startWeek: number) {
+  for (let week = startWeek; week <= 18; week += 1) {
+    await saveStoredModifiers(week, []);
+  }
+}
+
 export async function isModifierWeekReleased(week: number, now = new Date()) {
   if (process.env.DATABASE_URL) {
     const record = await prisma.weeklyModifierSet.findUnique({
