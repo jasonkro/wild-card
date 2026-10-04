@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatSlotModifierTarget, getLineupSlotTarget, getModifierSchedule, getPositionModifierFactor, getRandomWeeklyModifiers, getWeeklyModifiers, WeeklyModifier } from './modifiers.ts';
+import { formatSlotModifierTarget, getLineupSlotTarget, getModifierSchedule, getPositionModifierFactor, getRandomWeeklyModifiers, getWeeklyModifiers, WeeklyModifier } from './modifiers';
 
 test('next week modifiers stay hidden before Sunday 8pm ET', () => {
   const beforeReveal = new Date('2026-09-14T18:00:00-04:00');
@@ -57,7 +57,7 @@ test('randomized modifier sets start with a +100% single slot and obey group exc
     assert.equal(first.percent, 100);
     assert.ok(first.target?.endsWith('1'));
 
-    const firstPosition = first.target?.slice(0, -1);
+    const firstPosition = first.target?.slice(0, -1) as WeeklyModifier['target'];
     const groupTargets = modifiers.slice(1).map((modifier) => modifier.target);
     assert.ok(modifiers.slice(1).every((modifier) => modifier.kind === 'position'));
     assert.equal(modifiers[1].sign, 1);
