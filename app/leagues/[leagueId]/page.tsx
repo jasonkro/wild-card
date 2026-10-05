@@ -302,9 +302,9 @@ export default function LeaguePage() {
               <div className="upcoming-modifiers">
                 <div className="upcoming-modifiers-heading">
                   <span className="eyebrow">UP NEXT / WEEK {dashboard.upcomingWeek}</span>
-                  <span>{dashboard.upcomingModifiersAvailable ? "REVEALED" : "SUNDAY 8:00 PM ET"}</span>
+                  <span>{dashboard.upcomingModifiersAvailable ? dashboard.upcomingModifiers.length > 0 ? "REVEALED" : "SET PENDING" : "SUNDAY 8:00 PM ET"}</span>
                 </div>
-                {dashboard.upcomingModifiersAvailable ? (
+                {dashboard.upcomingModifiersAvailable && dashboard.upcomingModifiers.length > 0 ? (
                   <div className="next-modifier-list">
                     {dashboard.upcomingModifiers.map((modifier) => (
                       <div
@@ -320,6 +320,10 @@ export default function LeaguePage() {
                       </div>
                     ))}
                   </div>
+                ) : dashboard.upcomingModifiersAvailable ? (
+                  <p className="future-week-note">
+                    Week {dashboard.upcomingWeek} is open, but its modifier set is empty. Refresh the page to retry generation.
+                  </p>
                 ) : (
                   <p className="future-week-note">
                     Week {dashboard.upcomingWeek} modifiers will be revealed at 8:00 PM ET on Sunday.

@@ -69,9 +69,34 @@ export async function saveStoredModifiers(week: number, modifiers: WeeklyModifie
 }
 
 export async function clearStoredModifiersFromWeek(startWeek: number) {
-  for (let week = startWeek; week <= 18; week += 1) {
-    await saveStoredModifiers(week, []);
+  const now = new Date();
+  if (process.env.DATABASE_URL) {
+    for (let week = startWeek; week <= 18; week += 1) {
+      await prisma.weeklyModifierSet.upsert({
+        where: { season_week: { season: 2026, week } },
+        create: {
+          season: 2026,
+          week,
+          modifiers: [],
+          lockedAt: now,
+          revealAt: unreleasedTimestamp,
+        },
+        update: {
+          modifiers: [],
+          lockedAt: now,
+          revealAt: unreleasedTimestamp,
+        },
+      });
+    }
+    return;
   }
+
+  const store = await readStore();
+  for (let week = startWeek; week <= 18; week += 1) {
+    store.weeks[String(week)] = [];
+  }
+  store.releasedWeeks = store.releasedWeeks.filter((week) => week < startWeek);
+  await writeStore(store);
 }
 
 export async function isModifierWeekReleased(week: number, now = new Date()) {
@@ -90,7 +115,7 @@ export async function getReleasedModifiers(week: number) {
     const existing = await prisma.weeklyModifierSet.findUnique({
       where: { season_week: { season: 2026, week } },
     });
-    if (existing) {
+    if (existing?.modifiers && Array.isArray(existing.modifiers) && existing.modifiers.length > 0) {
       if (!hasDatabaseReleaseMarker(existing, new Date())) {
         const releasedAt = new Date();
         await prisma.weeklyModifierSet.update({
@@ -105,10 +130,16 @@ export async function getReleasedModifiers(week: number) {
     const now = new Date();
     const revealAt = new Date(now);
     try {
-      await prisma.weeklyModifierSet.create({
-        data: {
+      await prisma.weeklyModifierSet.upsert({
+        where: { season_week: { season: 2026, week } },
+        create: {
           season: 2026,
           week,
+          modifiers: JSON.parse(JSON.stringify(modifiers)),
+          lockedAt: now,
+          revealAt,
+        },
+        update: {
           modifiers: JSON.parse(JSON.stringify(modifiers)),
           lockedAt: now,
           revealAt,
@@ -124,7 +155,10 @@ export async function getReleasedModifiers(week: number) {
   }
 
   const store = await readStore();
-  const modifiers = store.weeks[String(week)] || normalizeWeeklyModifiers(getRandomWeeklyModifiers());
+  const existingModifiers = store.weeks[String(week)];
+  const modifiers = existingModifiers?.length
+    ? normalizeWeeklyModifiers(existingModifiers)
+    : normalizeWeeklyModifiers(getRandomWeeklyModifiers());
   store.weeks[String(week)] = modifiers;
   if (!store.releasedWeeks.includes(week)) store.releasedWeeks.push(week);
   await writeStore(store);
